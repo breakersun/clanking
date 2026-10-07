@@ -27,7 +27,7 @@ type Mixer struct {
 	ceiling float64
 }
 
-// New returns a mixer that applies gain before a tanh limiter held below ceiling.
+// New returns a mixer that applies gain after a tanh limiter held below ceiling, so gain shifts every level.
 func New(gain, ceiling float64) *Mixer { return &Mixer{gain: gain, ceiling: ceiling} }
 
 // Add starts a sound; when the pool is full a tick is dropped and a cue replaces the oldest tick.
@@ -56,7 +56,7 @@ func (m *Mixer) Fill(block []float32) {
 	}
 	m.voices = slices.DeleteFunc(m.voices, func(v *voice) bool { return v.pos == len(v.Samples) })
 	for i, x := range block {
-		block[i] = float32(m.ceiling * math.Tanh(m.gain*float64(x)/m.ceiling))
+		block[i] = float32(m.gain * m.ceiling * math.Tanh(float64(x)/m.ceiling))
 	}
 }
 

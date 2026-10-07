@@ -1,6 +1,7 @@
 package mixer_test
 
 import (
+	"math"
 	"testing"
 
 	"meknik/internal/approx"
@@ -107,5 +108,14 @@ func TestFullPoolOfCuesDropsCue(t *testing.T) {
 	m.Add(constant(loud, blockSize, false))
 	if got := firstFrame(m); !approx.Equal(mixer.MaxVoices*quiet, got, tolerance) {
 		t.Errorf("frame = %v, want %v", got, mixer.MaxVoices*quiet)
+	}
+}
+
+func TestGainShiftsLevelAboveCeiling(t *testing.T) {
+	m := mixer.New(4*unity, tightCeiling)
+	m.Add(constant(saturating, blockSize, false))
+	want := 4 * tightCeiling * math.Tanh(saturating/tightCeiling)
+	if got := firstFrame(m); !approx.Equal(want, got, tolerance) {
+		t.Errorf("frame = %v, want %v", got, want)
 	}
 }

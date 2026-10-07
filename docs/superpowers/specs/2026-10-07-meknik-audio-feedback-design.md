@@ -114,7 +114,7 @@ levels. The mixer stream volume is the only mute control.
 - When the voice pool is full, a new `tick` is dropped. Any other new
   cue replaces the oldest `tick` voice. If the pool holds no `tick`,
   the new cue is dropped.
-- A soft limiter (tanh curve) holds the mix below −24 dBFS.
+- A soft limiter (tanh curve) holds the mix below −24 dBFS, before `MEKNIK_GAIN` is applied.
 
 ## Package layout
 
