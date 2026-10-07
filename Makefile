@@ -7,4 +7,4 @@ lint:
 	golangci-lint run ./...
 
 install:
-	GOBIN=$(HOME)/.local/bin go install ./cmd/meknik
+	GOBIN=$(HOME)/.local/bin go install -buildvcs=false ./cmd/meknik
