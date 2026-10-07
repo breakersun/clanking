@@ -19,6 +19,7 @@ const (
 	Ask        Cue = "ask"
 	Reply      Cue = "reply"
 	Milestone  Cue = "milestone"
+	Noted      Cue = "noted"
 )
 
 // Peak levels in dBFS, with the random level spread applied to ticks.
@@ -45,6 +46,8 @@ const (
 	glide      = 250 * time.Millisecond
 	blip       = 25 * time.Millisecond
 	climb      = 45 * time.Millisecond
+	plink      = 120 * time.Millisecond
+	plinkDecay = 40 * time.Millisecond
 )
 
 type score struct {
@@ -64,6 +67,7 @@ var scores = map[Cue]score{
 	Ask:        {CuePeakDB, []Note{{From: 0, To: 7, Length: glide, Decay: sustain, Timbre: Sine}}},
 	Reply:      {ReplyPeakDB, []Note{held(19, 0, blip), held(24, blip, blip)}},
 	Milestone:  {CuePeakDB, []Note{held(0, 0, climb), held(4, climb, climb), held(7, 2*climb, climb), rung(12, 3*climb)}},
+	Noted:      {ReplyPeakDB, []Note{{From: 12, To: 12, Length: plink, Decay: plinkDecay, Timbre: Sine}}},
 }
 
 // Sound renders a cue, reporting false for an unknown cue.

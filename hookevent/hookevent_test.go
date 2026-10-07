@@ -25,6 +25,7 @@ func TestParseMapsEvents(t *testing.T) {
 		`{"hook_event_name":"PostToolUse","tool_name":"Bash"}`:           {"", false},
 		`{"hook_event_name":"Notification"}`:                             {"", false},
 		`{"hook_event_name":"TaskCompleted"}`:                            {synth.Milestone, true},
+		`{"hook_event_name":"TaskCreated"}`:                              {synth.Noted, true},
 		`{"hook_event_name":"MessageDisplay","index":0,"final":false}`:   {synth.Reply, true},
 		`{"hook_event_name":"MessageDisplay","index":3,"final":true}`:    {"", false},
 	}
