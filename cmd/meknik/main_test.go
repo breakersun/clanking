@@ -39,3 +39,9 @@ func TestPlayRejectsUnknownCue(t *testing.T) {
 		t.Error("play bogus error = nil, want an error")
 	}
 }
+
+func TestLimiterCeilingSitsSixDecibelsAboveCues(t *testing.T) {
+	if got := limiterCeilingDB - synth.CuePeakDB; got != 6 {
+		t.Errorf("ceiling minus cue = %v dB, want 6", got)
+	}
+}

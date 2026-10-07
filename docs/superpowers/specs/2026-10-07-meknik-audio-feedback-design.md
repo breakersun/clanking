@@ -104,7 +104,7 @@ otherwise, the waveform is a sine.
 | `permission` | a knock, then tension | +5, +5 at 60 ms each, then +11 held 250 ms, unresolved |
 | `ask` | a spoken "hm?" | one tone gliding from 0 to +7 over 250 ms |
 
-Levels: `tick` peaks at −24 dBFS. The other cues peak at −18 dBFS.
+Levels: `tick` peaks at −36 dBFS. The other cues peak at −30 dBFS.
 `MEKNIK_GAIN` (dB, default 0) in the daemon's environment shifts all
 levels. The mixer stream volume is the only mute control.
 
@@ -114,7 +114,7 @@ levels. The mixer stream volume is the only mute control.
 - When the voice pool is full, a new `tick` is dropped. Any other new
   cue replaces the oldest `tick` voice. If the pool holds no `tick`,
   the new cue is dropped.
-- A soft limiter (tanh curve) holds the mix below −12 dBFS.
+- A soft limiter (tanh curve) holds the mix below −24 dBFS.
 
 ## Package layout
 

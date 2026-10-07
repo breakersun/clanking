@@ -21,8 +21,8 @@ const (
 
 // Peak levels in dBFS, with the random level spread applied to ticks.
 const (
-	TickPeakDB   = -24.0
-	CuePeakDB    = -18.0
+	TickPeakDB   = -36.0
+	CuePeakDB    = -30.0
 	TickJitterDB = 3.0
 )
 

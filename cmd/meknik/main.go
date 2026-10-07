@@ -31,7 +31,7 @@ const (
 	spawnTimeout     = time.Second
 	retryInterval    = 20 * time.Millisecond
 	idleTimeout      = 10 * time.Minute
-	limiterCeilingDB = -12.0
+	limiterCeilingDB = -24.0
 	soundQueue       = 64
 	logMode          = 0o644
 	dirMode          = 0o755

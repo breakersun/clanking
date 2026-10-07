@@ -110,3 +110,15 @@ func TestUnknownCueIsRejected(t *testing.T) {
 		t.Error("Sound(bogus) ok = true, want false")
 	}
 }
+
+func TestDoneSitsWellBelowFullScale(t *testing.T) {
+	if got := peak(sound(t, synth.Done)); !approx.Equal(synth.Amplitude(-30), got, levelTolerance) {
+		t.Errorf("peak = %v, want %v", got, synth.Amplitude(-30))
+	}
+}
+
+func TestTickSitsBelowCues(t *testing.T) {
+	if got := synth.CuePeakDB - synth.TickPeakDB; got != 6 {
+		t.Errorf("cue minus tick = %v dB, want 6", got)
+	}
+}
