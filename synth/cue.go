@@ -17,12 +17,14 @@ const (
 	Failed     Cue = "failed"
 	Permission Cue = "permission"
 	Ask        Cue = "ask"
+	Reply      Cue = "reply"
 )
 
 // Peak levels in dBFS, with the random level spread applied to ticks.
 const (
 	TickPeakDB   = -36.0
 	CuePeakDB    = -30.0
+	ReplyPeakDB  = -33.0
 	TickJitterDB = 3.0
 )
 
@@ -40,18 +42,25 @@ const (
 	knock      = 60 * time.Millisecond
 	hang       = 250 * time.Millisecond
 	glide      = 250 * time.Millisecond
+	blip       = 25 * time.Millisecond
 )
 
-var scores = map[Cue][]Note{
-	Spawn:  {held(12, 0, bloop), held(19, bloop, bloop)},
-	Return: {held(19, 0, bloop), held(12, bloop, bloop)},
-	Done:   {rung(7, 0), rung(4, cadenceGap), rung(0, 2*cadenceGap)},
-	Failed: {
+type score struct {
+	peakDB float64
+	notes  []Note
+}
+
+var scores = map[Cue]score{
+	Spawn:  {CuePeakDB, []Note{held(12, 0, bloop), held(19, bloop, bloop)}},
+	Return: {CuePeakDB, []Note{held(19, 0, bloop), held(12, bloop, bloop)}},
+	Done:   {CuePeakDB, []Note{rung(7, 0), rung(4, cadenceGap), rung(0, 2*cadenceGap)}},
+	Failed: {CuePeakDB, []Note{
 		{From: -6, To: -6, Length: buzzNote, Decay: sustain, Timbre: Buzzy},
 		{From: -12, To: -12, Onset: buzzNote, Length: buzzNote, Decay: sustain, Timbre: Buzzy},
-	},
-	Permission: {held(5, 0, knock), held(5, knock, knock), held(11, 2*knock, hang)},
-	Ask:        {{From: 0, To: 7, Length: glide, Decay: sustain, Timbre: Sine}},
+	}},
+	Permission: {CuePeakDB, []Note{held(5, 0, knock), held(5, knock, knock), held(11, 2*knock, hang)}},
+	Ask:        {CuePeakDB, []Note{{From: 0, To: 7, Length: glide, Decay: sustain, Timbre: Sine}}},
+	Reply:      {ReplyPeakDB, []Note{held(19, 0, blip), held(24, blip, blip)}},
 }
 
 // Sound renders a cue, reporting false for an unknown cue.
@@ -59,11 +68,11 @@ func Sound(c Cue, rng *rand.Rand) ([]float32, bool) {
 	if c == Tick {
 		return tick(rng), true
 	}
-	score, ok := scores[c]
+	s, ok := scores[c]
 	if !ok {
 		return nil, false
 	}
-	return Render(score, CuePeakDB), true
+	return Render(s.notes, s.peakDB), true
 }
 
 func tick(rng *rand.Rand) []float32 {

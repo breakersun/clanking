@@ -13,7 +13,7 @@ const (
 	tickHighHz = 2600.0
 )
 
-var allCues = []synth.Cue{synth.Tick, synth.Spawn, synth.Return, synth.Done, synth.Failed, synth.Permission, synth.Ask}
+var allCues = []synth.Cue{synth.Tick, synth.Spawn, synth.Return, synth.Done, synth.Failed, synth.Permission, synth.Ask, synth.Reply}
 
 func newRNG() *rand.Rand { return rand.New(rand.NewPCG(1, 2)) }
 
@@ -29,7 +29,7 @@ func sound(t *testing.T, c synth.Cue) []float32 {
 func TestCueDurations(t *testing.T) {
 	want := map[synth.Cue]int{
 		synth.Tick: ms(12), synth.Spawn: ms(80), synth.Return: ms(80), synth.Done: ms(380),
-		synth.Failed: ms(300), synth.Permission: ms(370), synth.Ask: ms(250),
+		synth.Failed: ms(300), synth.Permission: ms(370), synth.Ask: ms(250), synth.Reply: ms(50),
 	}
 	for c, frames := range want {
 		t.Run(string(c), func(t *testing.T) {
@@ -61,13 +61,24 @@ func TestCuesEndSilent(t *testing.T) {
 	}
 }
 
-func TestCuesPeakAtCueLevel(t *testing.T) {
-	for _, c := range allCues[1:] {
+func TestCuePeakLevels(t *testing.T) {
+	want := map[synth.Cue]float64{
+		synth.Spawn: synth.CuePeakDB, synth.Return: synth.CuePeakDB, synth.Done: synth.CuePeakDB,
+		synth.Failed: synth.CuePeakDB, synth.Permission: synth.CuePeakDB, synth.Ask: synth.CuePeakDB,
+		synth.Reply: synth.ReplyPeakDB,
+	}
+	for c, db := range want {
 		t.Run(string(c), func(t *testing.T) {
-			if got := peak(sound(t, c)); !approx.Equal(synth.Amplitude(synth.CuePeakDB), got, levelTolerance) {
-				t.Errorf("peak = %v, want %v", got, synth.Amplitude(synth.CuePeakDB))
+			if got := peak(sound(t, c)); !approx.Equal(synth.Amplitude(db), got, levelTolerance) {
+				t.Errorf("peak = %v, want %v", got, synth.Amplitude(db))
 			}
 		})
+	}
+}
+
+func TestReplySitsBetweenTicksAndCues(t *testing.T) {
+	if got := synth.ReplyPeakDB; got != -33 {
+		t.Errorf("ReplyPeakDB = %v, want -33", got)
 	}
 }
 
@@ -94,6 +105,7 @@ func TestCueFinalPitch(t *testing.T) {
 		{synth.Return, 45, 75, 12},
 		{synth.Done, 300, 370, 0},
 		{synth.Permission, 200, 360, 11},
+		{synth.Reply, 28, 48, 24},
 	}
 	for _, tc := range cases {
 		t.Run(string(tc.cue), func(t *testing.T) {

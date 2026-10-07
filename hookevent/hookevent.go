@@ -9,8 +9,10 @@ import (
 )
 
 const (
-	preToolUse  = "PreToolUse"
-	askToolName = "AskUserQuestion"
+	preToolUse     = "PreToolUse"
+	messageDisplay = "MessageDisplay"
+	askToolName    = "AskUserQuestion"
+	firstDelta     = 0
 )
 
 var eventCues = map[string]synth.Cue{
@@ -25,6 +27,7 @@ var eventCues = map[string]synth.Cue{
 type payload struct {
 	Event string `json:"hook_event_name"`
 	Tool  string `json:"tool_name"`
+	Index int    `json:"index"`
 }
 
 // Parse reads a hook payload and returns its cue, reporting false when the event has none.
@@ -35,6 +38,9 @@ func Parse(r io.Reader) (synth.Cue, bool, error) {
 	}
 	if p.Event == preToolUse && p.Tool == askToolName {
 		return synth.Ask, true, nil
+	}
+	if p.Event == messageDisplay && p.Index == firstDelta {
+		return synth.Reply, true, nil
 	}
 	c, ok := eventCues[p.Event]
 	return c, ok, nil

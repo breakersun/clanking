@@ -82,6 +82,7 @@ tuning the sounds by ear, and needs no daemon.
 | `Stop` | | `done` |
 | `StopFailure` | | `failed` |
 | `PermissionRequest` | | `permission` |
+| `MessageDisplay` | `index == 0` (first lines of a message) | `reply` |
 | any other event | | none |
 
 Only events in this table are added to `settings.json`. Unknown events
@@ -103,8 +104,9 @@ otherwise, the waveform is a sine.
 | `failed` | wrong, but not an alarm | −6 then −12, 150 ms each, with added 3rd and 5th harmonics for a buzzier timbre |
 | `permission` | a knock, then tension | +5, +5 at 60 ms each, then +11 held 250 ms, unresolved |
 | `ask` | a spoken "hm?" | one tone gliding from 0 to +7 over 250 ms |
+| `reply` | a console "bee-boop": thinking is over | +19 then +24, 25 ms each |
 
-Levels: `tick` peaks at −36 dBFS. The other cues peak at −30 dBFS.
+Levels: `tick` peaks at −36 dBFS, `reply` at −33 dBFS, and the other cues at −30 dBFS.
 `MEKNIK_GAIN` (dB, default 0) in the daemon's environment shifts all
 levels. The mixer stream volume is the only mute control.
 
