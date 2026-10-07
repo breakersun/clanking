@@ -22,6 +22,7 @@ var eventCues = map[string]synth.Cue{
 	"Stop":              synth.Done,
 	"StopFailure":       synth.Failed,
 	"PermissionRequest": synth.Permission,
+	"TaskCompleted":     synth.Milestone,
 }
 
 type payload struct {

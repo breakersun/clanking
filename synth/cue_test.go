@@ -13,7 +13,7 @@ const (
 	tickHighHz = 2600.0
 )
 
-var allCues = []synth.Cue{synth.Tick, synth.Spawn, synth.Return, synth.Done, synth.Failed, synth.Permission, synth.Ask, synth.Reply}
+var allCues = []synth.Cue{synth.Tick, synth.Spawn, synth.Return, synth.Done, synth.Failed, synth.Permission, synth.Ask, synth.Reply, synth.Milestone}
 
 func newRNG() *rand.Rand { return rand.New(rand.NewPCG(1, 2)) }
 
@@ -29,7 +29,7 @@ func sound(t *testing.T, c synth.Cue) []float32 {
 func TestCueDurations(t *testing.T) {
 	want := map[synth.Cue]int{
 		synth.Tick: ms(12), synth.Spawn: ms(80), synth.Return: ms(80), synth.Done: ms(380),
-		synth.Failed: ms(300), synth.Permission: ms(370), synth.Ask: ms(250), synth.Reply: ms(50),
+		synth.Failed: ms(300), synth.Permission: ms(370), synth.Ask: ms(250), synth.Reply: ms(50), synth.Milestone: ms(335),
 	}
 	for c, frames := range want {
 		t.Run(string(c), func(t *testing.T) {
@@ -65,7 +65,7 @@ func TestCuePeakLevels(t *testing.T) {
 	want := map[synth.Cue]float64{
 		synth.Spawn: synth.CuePeakDB, synth.Return: synth.CuePeakDB, synth.Done: synth.CuePeakDB,
 		synth.Failed: synth.CuePeakDB, synth.Permission: synth.CuePeakDB, synth.Ask: synth.CuePeakDB,
-		synth.Reply: synth.ReplyPeakDB,
+		synth.Reply: synth.ReplyPeakDB, synth.Milestone: synth.CuePeakDB,
 	}
 	for c, db := range want {
 		t.Run(string(c), func(t *testing.T) {
@@ -106,6 +106,7 @@ func TestCueFinalPitch(t *testing.T) {
 		{synth.Done, 300, 370, 0},
 		{synth.Permission, 200, 360, 11},
 		{synth.Reply, 28, 48, 24},
+		{synth.Milestone, 145, 300, 12},
 	}
 	for _, tc := range cases {
 		t.Run(string(tc.cue), func(t *testing.T) {

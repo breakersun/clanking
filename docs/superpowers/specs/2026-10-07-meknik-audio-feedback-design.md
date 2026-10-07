@@ -83,6 +83,7 @@ tuning the sounds by ear, and needs no daemon.
 | `Stop` | | `done` |
 | `StopFailure` | | `failed` |
 | `PermissionRequest` | | `permission` |
+| `TaskCompleted` | | `milestone` |
 | `MessageDisplay` | `index == 0` (first lines of a message) | `reply` |
 | any other event | | none |
 
@@ -106,6 +107,7 @@ otherwise, the waveform is a sine.
 | `permission` | a knock, then tension | +5, +5 at 60 ms each, then +11 held 250 ms, unresolved |
 | `ask` | a spoken "hm?" | one tone gliding from 0 to +7 over 250 ms |
 | `reply` | a console "bee-boop": thinking is over | +19 then +24, 25 ms each |
+| `milestone` | a step finished: the rising mirror of `done` | 0, +4, +7 at 45 ms each, then +12 ringing about 200 ms |
 
 Levels: `tick` peaks at −36 dBFS, `reply` at −33 dBFS, and the other cues at −30 dBFS.
 `MEKNIK_GAIN` (dB, default 0) in the daemon's environment shifts all
