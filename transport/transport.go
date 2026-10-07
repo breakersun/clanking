@@ -14,6 +14,7 @@ import (
 const (
 	network     = "unixgram"
 	maxDatagram = 64
+	sendTimeout = 100 * time.Millisecond
 )
 
 // Listen binds the daemon socket, replacing any stale socket file.
@@ -44,6 +45,9 @@ func Send(path string, c synth.Cue) error {
 	conn, err := net.Dial(network, path)
 	if err != nil {
 		return err
+	}
+	if err := conn.SetWriteDeadline(time.Now().Add(sendTimeout)); err != nil {
+		return errors.Join(err, conn.Close())
 	}
 	_, err = conn.Write([]byte(c))
 	return errors.Join(err, conn.Close())

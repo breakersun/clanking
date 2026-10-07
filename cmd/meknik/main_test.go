@@ -3,12 +3,17 @@ package main
 import (
 	"errors"
 	"testing"
+	"time"
 
 	"meknik/internal/approx"
+	"meknik/mixer"
 	"meknik/synth"
 )
 
-const tolerance = 1e-9
+const (
+	tolerance = 1e-9
+	stallWait = time.Second
+)
 
 func TestParseGainDefaultsToUnity(t *testing.T) {
 	if got, _ := parseGain(""); got != 1 {
@@ -43,5 +48,18 @@ func TestPlayRejectsUnknownCue(t *testing.T) {
 func TestLimiterCeilingSitsSixDecibelsAboveCues(t *testing.T) {
 	if got := limiterCeilingDB - synth.CuePeakDB; got != 6 {
 		t.Errorf("ceiling minus cue = %v dB, want 6", got)
+	}
+}
+
+func TestEnqueueDropsWhenQueueIsFull(t *testing.T) {
+	returned := make(chan struct{})
+	go func() {
+		enqueue(make(chan mixer.Sound), newRNG())(synth.Done)
+		close(returned)
+	}()
+	select {
+	case <-returned:
+	case <-time.After(stallWait):
+		t.Error("enqueue blocked on a full queue")
 	}
 }

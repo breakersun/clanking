@@ -16,6 +16,7 @@ const (
 	receiveWait   = time.Second
 	shortTimeout  = 20 * time.Millisecond
 	retryInterval = 5 * time.Millisecond
+	stallWait     = 2 * time.Second
 )
 
 var errSpawn = errors.New("spawn failed")
@@ -107,5 +108,27 @@ func TestDeliverReportsSpawnFailure(t *testing.T) {
 func TestDeliverTimesOutWhenDaemonNeverAppears(t *testing.T) {
 	if err := transport.Deliver(socketPath(t), synth.Done, noSpawn, shortTimeout, retryInterval); err == nil {
 		t.Error("Deliver error = nil, want an error")
+	}
+}
+
+func TestSendGivesUpWhenDaemonStopsReading(t *testing.T) {
+	path := socketPath(t)
+	conn, err := transport.Listen(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	failed := make(chan struct{})
+	go func() {
+		var err error
+		for err == nil {
+			err = transport.Send(path, synth.Tick)
+		}
+		close(failed)
+	}()
+	select {
+	case <-failed:
+	case <-time.After(stallWait):
+		t.Error("Send still blocked after the daemon stopped reading")
 	}
 }

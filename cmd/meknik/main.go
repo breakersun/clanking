@@ -124,7 +124,11 @@ func enqueue(sounds chan<- mixer.Sound, rng *rand.Rand) func(synth.Cue) {
 			slog.Warn("unknown cue", "cue", c)
 			return
 		}
-		sounds <- mixer.Sound{Samples: samples, Tick: c == synth.Tick}
+		select {
+		case sounds <- mixer.Sound{Samples: samples, Tick: c == synth.Tick}:
+		default:
+			slog.Warn("sound queue full, cue dropped", "cue", c)
+		}
 	}
 }
 
