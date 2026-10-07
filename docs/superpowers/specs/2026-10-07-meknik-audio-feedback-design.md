@@ -38,7 +38,7 @@ tool call.
 2. Map it to a cue name (see the mapping table). If there is no cue,
    exit.
 3. Send the cue name as one datagram to the Unix datagram socket
-   `$XDG_RUNTIME_DIR/meknik.sock`.
+   `$XDG_STATE_HOME/meknik/meknik.sock`.
 4. If the send fails, spawn `meknik daemon` detached (new session,
    stdio on `/dev/null`, working directory `/`), then retry the send
    until it succeeds or `SpawnTimeout` (1 s) elapses.
@@ -48,7 +48,7 @@ writes nothing to stdout.
 
 ### `meknik daemon`
 
-1. Take an exclusive `flock` on `$XDG_RUNTIME_DIR/meknik.lock` and hold
+1. Take an exclusive `flock` on `$XDG_STATE_HOME/meknik/meknik.lock` and hold
    it for the life of the process. If the lock is already held, exit
    0: another daemon is running. This makes concurrent autostarts
    safe without coordination in the client.
@@ -130,10 +130,21 @@ Logging uses `log/slog`, written to `$XDG_STATE_HOME/meknik/meknik.log`.
 
 ## Installation
 
-- `go install ./cmd/meknik` puts `meknik` on the PATH.
+- `make install` builds into `~/.local/share/meknik/bin/` and links
+  `~/.local/bin/meknik` to it.
 - In `~/.claude/settings.json`, add one async command hook per mapped
   event, each running `meknik hook`. The client reads
   `hook_event_name`, so every event uses the same command.
+
+## Containers
+
+The socket, lock, and log share one directory, `$XDG_STATE_HOME/meknik`
+(default `~/.local/state/meknik`, on local disk). A container whose user
+maps to the host user bind-mounts that directory at its own default
+path, so host and container agents share one daemon and one stream. The
+container also mounts the host's `pipewire-0` socket, installs `pw-cat`,
+and mounts `~/.local/share/meknik/bin` read-only, so that whichever side
+needs a daemon first can start it.
 
 ## Testing
 

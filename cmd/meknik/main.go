@@ -69,7 +69,11 @@ func runHook() error {
 	if err != nil || !ok {
 		return err
 	}
-	return transport.Deliver(runtimePath(socketName), cue, spawnDaemon, spawnTimeout, retryInterval)
+	socket, err := statePath(socketName)
+	if err != nil {
+		return err
+	}
+	return transport.Deliver(socket, cue, spawnDaemon, spawnTimeout, retryInterval)
 }
 
 func spawnDaemon() error {
@@ -97,7 +101,11 @@ func daemonCommand(self string, logFile *os.File) *exec.Cmd {
 }
 
 func runDaemon() error {
-	lock, held, err := daemon.Lock(runtimePath(lockName))
+	lockPath, err := statePath(lockName)
+	if err != nil {
+		return err
+	}
+	lock, held, err := daemon.Lock(lockPath)
 	if err != nil || !held {
 		return err
 	}
@@ -106,7 +114,10 @@ func runDaemon() error {
 	if err != nil {
 		return err
 	}
-	socket := runtimePath(socketName)
+	socket, err := statePath(socketName)
+	if err != nil {
+		return err
+	}
 	conn, err := transport.Listen(socket)
 	if err != nil {
 		return err
@@ -165,17 +176,20 @@ func parseGain(db string) (float64, error) {
 
 func newRNG() *rand.Rand { return rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64())) }
 
-func runtimePath(name string) string { return filepath.Join(os.Getenv("XDG_RUNTIME_DIR"), name) }
+func statePath(name string) (string, error) {
+	dir, err := stateDir()
+	return filepath.Join(dir, name), err
+}
 
 func openLog() (*os.File, error) {
-	dir, err := stateDir()
+	path, err := statePath(logName)
 	if err != nil {
 		return nil, err
 	}
-	if err := os.MkdirAll(dir, dirMode); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), dirMode); err != nil {
 		return nil, err
 	}
-	return os.OpenFile(filepath.Join(dir, logName), os.O_CREATE|os.O_APPEND|os.O_WRONLY, logMode)
+	return os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, logMode)
 }
 
 func stateDir() (string, error) {

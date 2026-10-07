@@ -71,3 +71,10 @@ func TestDaemonCommandSendsStderrToLog(t *testing.T) {
 		t.Errorf("Stderr = %v, want %v", got, logFile)
 	}
 }
+
+func TestStatePathLivesUnderStateHome(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", "/state")
+	if got, _ := statePath(socketName); got != "/state/meknik/meknik.sock" {
+		t.Errorf("statePath = %q, want /state/meknik/meknik.sock", got)
+	}
+}
