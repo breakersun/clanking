@@ -77,13 +77,23 @@ func spawnDaemon() error {
 	if err != nil {
 		return err
 	}
-	cmd := exec.Command(self, "daemon")
-	cmd.Dir = "/"
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
-	if err := cmd.Start(); err != nil {
+	logFile, err := openLog()
+	if err != nil {
 		return err
 	}
-	return cmd.Process.Release()
+	cmd := daemonCommand(self, logFile)
+	if err := cmd.Start(); err != nil {
+		return errors.Join(err, logFile.Close())
+	}
+	return errors.Join(cmd.Process.Release(), logFile.Close())
+}
+
+func daemonCommand(self string, logFile *os.File) *exec.Cmd {
+	cmd := exec.Command(self, "daemon")
+	cmd.Dir = "/"
+	cmd.Stderr = logFile
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	return cmd
 }
 
 func runDaemon() error {

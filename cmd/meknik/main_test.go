@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"os"
 	"testing"
 	"time"
 
@@ -61,5 +62,12 @@ func TestEnqueueDropsWhenQueueIsFull(t *testing.T) {
 	case <-returned:
 	case <-time.After(stallWait):
 		t.Error("enqueue blocked on a full queue")
+	}
+}
+
+func TestDaemonCommandSendsStderrToLog(t *testing.T) {
+	logFile := os.Stdout
+	if got := daemonCommand("/bin/meknik", logFile).Stderr; got != logFile {
+		t.Errorf("Stderr = %v, want %v", got, logFile)
 	}
 }
