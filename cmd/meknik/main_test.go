@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"meknik/daemon"
 	"meknik/internal/approx"
 	"meknik/mixer"
 	"meknik/synth"
@@ -74,7 +75,32 @@ func TestDaemonCommandSendsStderrToLog(t *testing.T) {
 
 func TestStatePathLivesUnderStateHome(t *testing.T) {
 	t.Setenv("XDG_STATE_HOME", "/state")
-	if got, _ := statePath(socketName); got != "/state/meknik/meknik.sock" {
-		t.Errorf("statePath = %q, want /state/meknik/meknik.sock", got)
+	if got, _ := statePath(logName); got != "/state/meknik/meknik.log" {
+		t.Errorf("statePath = %q, want /state/meknik/meknik.log", got)
+	}
+}
+
+func TestParseIdleDefaultsToNever(t *testing.T) {
+	if got, _ := parseIdle(""); got != daemon.NeverIdle {
+		t.Errorf("parseIdle(\"\") = %v, want %v", got, daemon.NeverIdle)
+	}
+}
+
+func TestParseIdleReadsDuration(t *testing.T) {
+	if got, _ := parseIdle("10m"); got != 10*time.Minute {
+		t.Errorf("parseIdle(10m) = %v, want 10m", got)
+	}
+}
+
+func TestRefuseSpawnReportsDisabled(t *testing.T) {
+	if err := refuseSpawn(); !errors.Is(err, errSpawnDisabled) {
+		t.Errorf("refuseSpawn = %v, want %v", err, errSpawnDisabled)
+	}
+}
+
+func TestRunPathLivesInSharedRunDir(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", "/state")
+	if got, _ := runPath(socketName); got != "/state/meknik/run/meknik.sock" {
+		t.Errorf("runPath = %q, want /state/meknik/run/meknik.sock", got)
 	}
 }

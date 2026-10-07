@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"math"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -91,5 +92,32 @@ func TestPlayReportsWriteFailure(t *testing.T) {
 	err := daemon.Play(mixer.New(unity, wideCeiling), make(chan mixer.Sound), failingWriter{}, idle, steppingClock())
 	if !errors.Is(err, errBroken) {
 		t.Errorf("Play error = %v, want %v", err, errBroken)
+	}
+}
+
+type brokenAfter struct{ writes int }
+
+func (w *brokenAfter) Write(p []byte) (int, error) {
+	if w.writes == 0 {
+		return 0, errBroken
+	}
+	w.writes--
+	return len(p), nil
+}
+
+func TestPlayWithNeverIdleKeepsPlaying(t *testing.T) {
+	out := &brokenAfter{writes: 100}
+	err := daemon.Play(mixer.New(unity, wideCeiling), make(chan mixer.Sound), out, daemon.NeverIdle, steppingClock())
+	if !errors.Is(err, errBroken) {
+		t.Errorf("Play error = %v, want %v", err, errBroken)
+	}
+}
+
+func TestLockRefusesSymlink(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, lockName)
+	_ = os.Symlink(filepath.Join(dir, "target"), path)
+	if _, _, err := daemon.Lock(path); err == nil {
+		t.Error("Lock error = nil, want an error for a symlinked lock")
 	}
 }

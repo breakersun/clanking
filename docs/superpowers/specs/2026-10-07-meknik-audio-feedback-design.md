@@ -38,7 +38,7 @@ tool call.
 2. Map it to a cue name (see the mapping table). If there is no cue,
    exit.
 3. Send the cue name as one datagram to the Unix datagram socket
-   `$XDG_STATE_HOME/meknik/meknik.sock`.
+   `$XDG_STATE_HOME/meknik/run/meknik.sock`.
 4. If the send fails, spawn `meknik daemon` detached (new session,
    stdio on `/dev/null`, working directory `/`), then retry the send
    until it succeeds or `SpawnTimeout` (1 s) elapses.
@@ -48,7 +48,7 @@ writes nothing to stdout.
 
 ### `meknik daemon`
 
-1. Take an exclusive `flock` on `$XDG_STATE_HOME/meknik/meknik.lock` and hold
+1. Take an exclusive `flock` on `$XDG_STATE_HOME/meknik/run/meknik.lock` and hold
    it for the life of the process. If the lock is already held, exit
    0: another daemon is running. This makes concurrent autostarts
    safe without coordination in the client.
@@ -61,8 +61,9 @@ writes nothing to stdout.
    block to the `pw-cat` pipe. When no voice is active, write silence,
    so the stream stays open and latency stays low. The pipe write
    paces the loop.
-5. Exit when no event has arrived for `IdleTimeout` (10 min). The next
-   hook starts a new daemon.
+5. Exit when no event has arrived for `MEKNIK_IDLE_TIMEOUT` (a Go
+   duration such as `10m`). The default, `0`, means never exit. After an
+   exit, the next host hook starts a new daemon.
 
 The `pw-cat` writer is passed to the audio loop as an `io.Writer`.
 
@@ -140,13 +141,19 @@ Logging uses `log/slog`, written to `$XDG_STATE_HOME/meknik/meknik.log`.
 
 ## Containers
 
-The socket, lock, and log share one directory, `$XDG_STATE_HOME/meknik`
-(default `~/.local/state/meknik`, on local disk). A container whose user
-maps to the host user bind-mounts that directory at its own default
-path, so host and container agents share one daemon and one stream. The
-container also mounts the host's `pipewire-0` socket, installs `pw-cat`,
-and mounts `~/.local/share/meknik/bin` read-only, so that whichever side
-needs a daemon first can start it.
+The socket and lock live in `$XDG_STATE_HOME/meknik/run`, on local disk.
+A container whose user maps to the host user bind-mounts only that `run`
+directory at its own default path, so container agents send cues to the
+host daemon and share its one stream. The container gets no PipeWire
+access and never starts a daemon: its hooks run `meknik hook --no-spawn`,
+which logs an error instead of spawning when no daemon answers. The
+container keeps its own log. The host opens the shared lock with
+`O_NOFOLLOW`, so a symlink planted from the container cannot redirect it.
+
+The container runs its own copy of the binary from
+`~/.local/share/meknik/container-bin`, which `make install` refreshes and
+the host never executes, so tampering inside the container cannot reach
+the host.
 
 ## Testing
 

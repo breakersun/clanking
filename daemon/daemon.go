@@ -16,11 +16,14 @@ import (
 // BlockFrames is the number of frames rendered per write.
 const BlockFrames = 256
 
+// NeverIdle disables the idle exit.
+const NeverIdle time.Duration = 0
+
 const lockMode = 0o600
 
 // Lock takes the single-instance lock, reporting false when another daemon holds it.
 func Lock(path string) (*os.File, bool, error) {
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, lockMode)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR|unix.O_NOFOLLOW, lockMode)
 	if err != nil {
 		return nil, false, err
 	}
@@ -34,12 +37,12 @@ func Lock(path string) (*os.File, bool, error) {
 	return f, true, nil
 }
 
-// Play mixes queued sounds into out block by block until idle passes with no new sound.
+// Play mixes queued sounds into out block by block until idle passes with no new sound, or forever with NeverIdle.
 func Play(m *mixer.Mixer, sounds <-chan mixer.Sound, out io.Writer, idle time.Duration, now func() time.Time) error {
 	block := make([]float32, BlockFrames)
 	var pcm []byte
 	last := now()
-	for now().Sub(last) < idle {
+	for idle == NeverIdle || now().Sub(last) < idle {
 		last = drain(m, sounds, last, now)
 		m.Fill(block)
 		pcm = playback.Encode(pcm[:0], block)

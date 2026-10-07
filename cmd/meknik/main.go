@@ -27,17 +27,22 @@ const (
 	socketName       = "meknik.sock"
 	lockName         = "meknik.lock"
 	logName          = "meknik.log"
+	runDirName       = "run"
+	noSpawnFlag      = "--no-spawn"
 	gainEnv          = "MEKNIK_GAIN"
+	idleEnv          = "MEKNIK_IDLE_TIMEOUT"
 	spawnTimeout     = time.Second
 	retryInterval    = 20 * time.Millisecond
-	idleTimeout      = 10 * time.Minute
 	limiterCeilingDB = -24.0
 	soundQueue       = 64
 	logMode          = 0o644
 	dirMode          = 0o755
 )
 
-var errUsage = errors.New("usage: meknik hook | meknik daemon | meknik play <cue>")
+var (
+	errUsage         = errors.New("usage: meknik hook [--no-spawn] | meknik daemon | meknik play <cue>")
+	errSpawnDisabled = errors.New("no daemon is running and spawning is disabled")
+)
 
 func main() {
 	logFile, err := openLog()
@@ -55,7 +60,9 @@ func main() {
 func run(args []string) error {
 	switch {
 	case slices.Equal(args, []string{"hook"}):
-		return runHook()
+		return runHook(spawnDaemon)
+	case slices.Equal(args, []string{"hook", noSpawnFlag}):
+		return runHook(refuseSpawn)
 	case slices.Equal(args, []string{"daemon"}):
 		return runDaemon()
 	case len(args) == 2 && args[0] == "play":
@@ -64,17 +71,19 @@ func run(args []string) error {
 	return errUsage
 }
 
-func runHook() error {
+func runHook(spawn func() error) error {
 	cue, ok, err := hookevent.Parse(os.Stdin)
 	if err != nil || !ok {
 		return err
 	}
-	socket, err := statePath(socketName)
+	socket, err := runPath(socketName)
 	if err != nil {
 		return err
 	}
-	return transport.Deliver(socket, cue, spawnDaemon, spawnTimeout, retryInterval)
+	return transport.Deliver(socket, cue, spawn, spawnTimeout, retryInterval)
 }
+
+func refuseSpawn() error { return errSpawnDisabled }
 
 func spawnDaemon() error {
 	self, err := os.Executable()
@@ -101,8 +110,11 @@ func daemonCommand(self string, logFile *os.File) *exec.Cmd {
 }
 
 func runDaemon() error {
-	lockPath, err := statePath(lockName)
+	lockPath, err := runPath(lockName)
 	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(lockPath), dirMode); err != nil {
 		return err
 	}
 	lock, held, err := daemon.Lock(lockPath)
@@ -114,7 +126,11 @@ func runDaemon() error {
 	if err != nil {
 		return err
 	}
-	socket, err := statePath(socketName)
+	idle, err := parseIdle(os.Getenv(idleEnv))
+	if err != nil {
+		return err
+	}
+	socket, err := runPath(socketName)
 	if err != nil {
 		return err
 	}
@@ -132,8 +148,8 @@ func runDaemon() error {
 			slog.Error("socket failed", "err", err)
 		}
 	}()
-	slog.Info("daemon started", "socket", socket, "gain", gain)
-	playErr := daemon.Play(mixer.New(gain, synth.Amplitude(limiterCeilingDB)), sounds, stream, idleTimeout, time.Now)
+	slog.Info("daemon started", "socket", socket, "gain", gain, "idle", idle)
+	playErr := daemon.Play(mixer.New(gain, synth.Amplitude(limiterCeilingDB)), sounds, stream, idle, time.Now)
 	slog.Info("daemon stopping")
 	return errors.Join(playErr, conn.Close(), os.Remove(socket), stream.Close())
 }
@@ -174,7 +190,16 @@ func parseGain(db string) (float64, error) {
 	return synth.Amplitude(v), err
 }
 
+func parseIdle(timeout string) (time.Duration, error) {
+	if timeout == "" {
+		return daemon.NeverIdle, nil
+	}
+	return time.ParseDuration(timeout)
+}
+
 func newRNG() *rand.Rand { return rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64())) }
+
+func runPath(name string) (string, error) { return statePath(filepath.Join(runDirName, name)) }
 
 func statePath(name string) (string, error) {
 	dir, err := stateDir()
