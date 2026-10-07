@@ -101,7 +101,7 @@ func runDaemon() error {
 	if err != nil {
 		return err
 	}
-	stream, err := playback.Start()
+	stream, err := playback.Start(playback.Command())
 	if err != nil {
 		return errors.Join(err, conn.Close(), os.Remove(socket))
 	}
@@ -137,7 +137,7 @@ func runPlay(c synth.Cue) error {
 	if !ok {
 		return fmt.Errorf("unknown cue %q", c)
 	}
-	stream, err := playback.Start()
+	stream, err := playback.Start(playback.Command())
 	if err != nil {
 		return err
 	}

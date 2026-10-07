@@ -2,6 +2,9 @@ package playback_test
 
 import (
 	"bytes"
+	"errors"
+	"os"
+	"os/exec"
 	"testing"
 
 	"meknik/playback"
@@ -17,5 +20,17 @@ func TestEncodeWritesLittleEndianFloat32(t *testing.T) {
 func TestEncodeAppendsToDestination(t *testing.T) {
 	if got := len(playback.Encode(make([]byte, 2), []float32{0, 0})); got != 10 {
 		t.Errorf("len = %d, want 10", got)
+	}
+}
+
+func TestWriteFailsWhenPlayerStopsReading(t *testing.T) {
+	cmd := exec.Command("sleep", "10")
+	stream, err := playback.Start(cmd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = cmd.Process.Kill(); _ = cmd.Wait() })
+	if _, err := stream.Write(make([]byte, 4*playback.PipeBytes)); !errors.Is(err, os.ErrDeadlineExceeded) {
+		t.Errorf("Write error = %v, want %v", err, os.ErrDeadlineExceeded)
 	}
 }
