@@ -1,0 +1,85 @@
+package pan_test
+
+import (
+	"math"
+	"testing"
+
+	"meknik/internal/approx"
+	"meknik/pan"
+)
+
+const (
+	tolerance = 1e-9
+	meknikDir = "/home/rc/meknik"
+	otherDir  = "/home/rc/lil.tel"
+	spaceDir  = "/home/rc/My Projects/x"
+	hardLeft  = -1.0
+)
+
+var someDirs = []string{meknikDir, otherDir, spaceDir, "/", "/tmp", "/home/rc", "/var/local/windows", "/home/rc/ia"}
+
+func TestOfIsStable(t *testing.T) {
+	if a, b := pan.Of(meknikDir), pan.Of(meknikDir); a != b {
+		t.Errorf("Of twice = %v then %v, want equal", a, b)
+	}
+}
+
+func TestOfStaysWithinWidth(t *testing.T) {
+	for _, dir := range someDirs {
+		t.Run(dir, func(t *testing.T) {
+			if got := pan.Of(dir); math.Abs(got) > pan.Width {
+				t.Errorf("Of(%q) = %v, want within ±%v", dir, got, pan.Width)
+			}
+		})
+	}
+}
+
+func TestOfSeparatesDirectories(t *testing.T) {
+	if a, b := pan.Of(meknikDir), pan.Of(otherDir); a == b {
+		t.Errorf("Of(%q) = Of(%q) = %v, want different", meknikDir, otherDir, a)
+	}
+}
+
+func TestOfCentresEmptyDirectory(t *testing.T) {
+	if got := pan.Of(""); got != 0 {
+		t.Errorf("Of(\"\") = %v, want 0", got)
+	}
+}
+
+func TestCentreGainsAreEqual(t *testing.T) {
+	left, right := pan.Gains(0)
+	if !approx.Equal(left, right, tolerance) {
+		t.Errorf("Gains(0) = %v, %v, want equal", left, right)
+	}
+}
+
+func TestRightPanFavoursRight(t *testing.T) {
+	if left, right := pan.Gains(pan.Width); right <= left {
+		t.Errorf("Gains(%v) = %v, %v, want right louder", pan.Width, left, right)
+	}
+}
+
+func TestGainsKeepPowerConstant(t *testing.T) {
+	left, right := pan.Gains(pan.Width)
+	if got := left*left + right*right; !approx.Equal(1, got, tolerance) {
+		t.Errorf("left² + right² = %v, want 1", got)
+	}
+}
+
+func TestInterleaveDoublesLength(t *testing.T) {
+	if got := len(pan.Interleave(make([]float32, 3), 0)); got != pan.Channels*3 {
+		t.Errorf("len = %d, want %d", got, pan.Channels*3)
+	}
+}
+
+func TestInterleavePutsLeftFirst(t *testing.T) {
+	if got := pan.Interleave([]float32{1}, hardLeft); got[0] != 1 {
+		t.Errorf("first sample = %v, want 1", got[0])
+	}
+}
+
+func TestInterleaveSilencesRightWhenHardLeft(t *testing.T) {
+	if got := pan.Interleave([]float32{1}, hardLeft); got[1] != 0 {
+		t.Errorf("second sample = %v, want 0", got[1])
+	}
+}
