@@ -15,8 +15,10 @@ lint: image
 
 build: image
 	$(IN_IMAGE) env CGO_ENABLED=0 go build -buildvcs=false -o bin/meknik ./cmd/meknik
+	$(IN_IMAGE) go build -buildvcs=false -o bin/meknik-ui ./cmd/meknik-ui
 
 install: build
-	install -D -m 755 -t $(BIN) bin/meknik
+	install -D -m 755 -t $(BIN) bin/meknik bin/meknik-ui
 	ln -sf $(BIN)/meknik $(HOME)/.local/bin/meknik
+	ln -sf $(BIN)/meknik-ui $(HOME)/.local/bin/meknik-ui
 	install -D -m 755 bin/meknik $(HOME)/.local/share/meknik/container-bin/meknik
