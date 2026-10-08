@@ -19,6 +19,13 @@ const (
 	errorPrefix    = "error: "
 )
 
+const (
+	// SpawnTimeout bounds how long a client waits for a daemon it started.
+	SpawnTimeout = time.Second
+	// RetryInterval is the pause between attempts to reach a starting daemon.
+	RetryInterval = 20 * time.Millisecond
+)
+
 // ErrDaemon reports a request the daemon could not carry out.
 var ErrDaemon = errors.New("daemon refused request")
 
@@ -98,4 +105,17 @@ func exchange(conn net.Conn, r control.Request) (string, error) {
 		return "", fmt.Errorf("%w: %s", ErrDaemon, reason)
 	}
 	return status, nil
+}
+
+// Control sends a request, starting a daemon with spawn when none answers, and returns the resulting settings.
+func Control(path string, r control.Request, spawn func() error) (control.Settings, error) {
+	var status string
+	ask := func() (err error) {
+		status, err = Ask(path, r)
+		return err
+	}
+	if err := Deliver(ask, spawn, SpawnTimeout, RetryInterval); err != nil {
+		return control.Settings{}, err
+	}
+	return control.ParseSettings(status)
 }

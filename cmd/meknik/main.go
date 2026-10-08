@@ -28,8 +28,6 @@ const (
 	settingsName     = "mixer.json"
 	noSpawnFlag      = "--no-spawn"
 	idleEnv          = "MEKNIK_IDLE_TIMEOUT"
-	spawnTimeout     = time.Second
-	retryInterval    = 20 * time.Millisecond
 	limiterCeilingDB = -24.0
 	soundQueue       = 64
 	dirMode          = 0o755
@@ -81,7 +79,7 @@ func runHook(spawn func() error) error {
 	if err != nil {
 		return err
 	}
-	return transport.Deliver(func() error { return transport.Send(socket, cue) }, spawn, spawnTimeout, retryInterval)
+	return transport.Deliver(func() error { return transport.Send(socket, cue) }, spawn, transport.SpawnTimeout, transport.RetryInterval)
 }
 
 func runControl(line string) error {
@@ -93,15 +91,11 @@ func runControl(line string) error {
 	if err != nil {
 		return err
 	}
-	var status string
-	ask := func() (err error) {
-		status, err = transport.Ask(path, r)
+	settings, err := transport.Control(path, r, spawnDaemon)
+	if err != nil {
 		return err
 	}
-	if err := transport.Deliver(ask, spawnDaemon, spawnTimeout, retryInterval); err != nil {
-		return err
-	}
-	_, err = fmt.Println(status)
+	_, err = fmt.Println(settings)
 	return err
 }
 

@@ -57,3 +57,32 @@ func TestServeControlReturnsNilWhenClosed(t *testing.T) {
 		t.Errorf("ServeControl error = %v, want nil", err)
 	}
 }
+
+func TestControlReturnsDaemonSettings(t *testing.T) {
+	path := controlPath(t)
+	serveControl(t, path, func(r control.Request) (control.Settings, error) { return control.Settings{}.Apply(r), nil })
+	got, _ := transport.Control(path, control.Request{Command: control.Mute}, func() error { return nil })
+	if want := (control.Settings{Muted: true}); got != want {
+		t.Errorf("Control = %+v, want %+v", got, want)
+	}
+}
+
+func TestControlSpawnsDaemonWhenNoneAnswers(t *testing.T) {
+	path := controlPath(t)
+	spawn := func() error {
+		serveControl(t, path, func(r control.Request) (control.Settings, error) { return control.Settings{}.Apply(r), nil })
+		return nil
+	}
+	got, _ := transport.Control(path, control.Request{Command: control.Volume, VolumeDB: -9}, spawn)
+	if want := (control.Settings{VolumeDB: -9}); got != want {
+		t.Errorf("Control = %+v, want %+v", got, want)
+	}
+}
+
+func TestControlReportsDaemonError(t *testing.T) {
+	path := controlPath(t)
+	serveControl(t, path, func(control.Request) (control.Settings, error) { return control.Settings{}, errSave })
+	if _, err := transport.Control(path, control.Request{Command: control.Mute}, func() error { return nil }); !errors.Is(err, transport.ErrDaemon) {
+		t.Errorf("Control error = %v, want %v", err, transport.ErrDaemon)
+	}
+}
