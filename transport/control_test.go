@@ -34,7 +34,7 @@ func TestAskReturnsDaemonStatus(t *testing.T) {
 		return control.Settings{}.Apply(r), nil
 	})
 	got, _ := transport.Ask(path, control.Request{Command: control.Volume, VolumeDB: -6})
-	if want := "volume -6 dB, unmuted; " + gridState; got != want {
+	if want := "volume -6 dB, unmuted, 0 bpm; " + gridState; got != want {
 		t.Errorf("Ask = %q, want %q", got, want)
 	}
 }

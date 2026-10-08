@@ -11,7 +11,7 @@ import (
 
 const (
 	eventsName  = "meknik.events"
-	snapshot    = "settings volume 0 dB, unmuted"
+	snapshot    = "settings volume 0 dB, unmuted, 120 bpm"
 	eventWait   = time.Second
 	watchBuffer = 8
 )

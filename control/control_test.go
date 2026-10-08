@@ -2,6 +2,7 @@ package control_test
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -21,6 +22,7 @@ func TestParseAcceptsRequests(t *testing.T) {
 		"toggle":      {Command: control.Toggle},
 		"volume -6":   {Command: control.Volume, VolumeDB: -6},
 		"volume 24\n": {Command: control.Volume, VolumeDB: 24},
+		"tempo 90":    {Command: control.Tempo, TempoBPM: 90},
 	}
 	for line, want := range cases {
 		t.Run(line, func(t *testing.T) {
@@ -32,7 +34,7 @@ func TestParseAcceptsRequests(t *testing.T) {
 }
 
 func TestParseRejectsInvalidRequests(t *testing.T) {
-	for _, line := range []string{"", "louder", "volume", "volume loud", "volume NaN", "volume -Inf", "volume 24.5", "mute now"} {
+	for _, line := range []string{"", "louder", "volume", "volume loud", "volume NaN", "volume -Inf", "volume 24.5", "mute now", "tempo 59", "tempo 241", "tempo fast", "tempo 90.5"} {
 		t.Run(line, func(t *testing.T) {
 			if _, err := control.Parse(line); !errors.Is(err, control.ErrInvalid) {
 				t.Errorf("Parse(%q) error = %v, want %v", line, err, control.ErrInvalid)
@@ -49,8 +51,8 @@ func TestRequestStringParsesBack(t *testing.T) {
 }
 
 func TestSettingsStringReportsStatus(t *testing.T) {
-	if got := (control.Settings{VolumeDB: -6, Muted: true}).String(); got != "volume -6 dB, muted" {
-		t.Errorf("String = %q, want %q", got, "volume -6 dB, muted")
+	if got := (control.Settings{VolumeDB: -6, Muted: true, TempoBPM: 90}).String(); got != "volume -6 dB, muted, 90 bpm" {
+		t.Errorf("String = %q, want %q", got, "volume -6 dB, muted, 90 bpm")
 	}
 }
 
@@ -137,7 +139,7 @@ func TestHandleReportsSaveFailure(t *testing.T) {
 }
 
 func TestLoadWithoutFileGivesDefaults(t *testing.T) {
-	if got, _ := control.Load(filepath.Join(t.TempDir(), "mixer.json")); got != (control.Settings{}) {
+	if got, _ := control.Load(filepath.Join(t.TempDir(), "mixer.json")); got != (control.Settings{TempoBPM: control.DefaultTempoBPM}) {
 		t.Errorf("Load = %+v, want defaults", got)
 	}
 }
@@ -152,25 +154,46 @@ func TestSaveThenLoadRoundTrips(t *testing.T) {
 }
 
 func TestParseSettingsReadsStatusLine(t *testing.T) {
-	want := control.Settings{VolumeDB: -7.5, Muted: true}
+	want := control.Settings{VolumeDB: -7.5, Muted: true, TempoBPM: 90}
 	if got, _ := control.ParseSettings(want.String()); got != want {
 		t.Errorf("ParseSettings(String()) = %+v, want %+v", got, want)
 	}
 }
 
 func TestParseSettingsReadsUnmuted(t *testing.T) {
-	want := control.Settings{VolumeDB: 24}
+	want := control.Settings{VolumeDB: 24, TempoBPM: 240}
 	if got, _ := control.ParseSettings(want.String()); got != want {
 		t.Errorf("ParseSettings(String()) = %+v, want %+v", got, want)
 	}
 }
 
 func TestParseSettingsRejectsMalformedLines(t *testing.T) {
-	for _, line := range []string{"", "volume -6 dB", "volume loud dB, muted", "volume -6 dB, quiet", "loudness -6 dB, muted"} {
+	for _, line := range []string{"", "volume -6 dB, muted", "volume loud dB, muted, 90 bpm", "volume -6 dB, quiet, 90 bpm", "volume -6 dB, muted, fast bpm", "volume -6 dB, muted, 90 bpm, extra"} {
 		t.Run(line, func(t *testing.T) {
 			if _, err := control.ParseSettings(line); !errors.Is(err, control.ErrStatus) {
 				t.Errorf("ParseSettings(%q) error = %v, want %v", line, err, control.ErrStatus)
 			}
 		})
+	}
+}
+
+func TestApplyTempo(t *testing.T) {
+	got := control.Settings{TempoBPM: control.DefaultTempoBPM}.Apply(control.Request{Command: control.Tempo, TempoBPM: 90})
+	if want := (control.Settings{TempoBPM: 90}); got != want {
+		t.Errorf("Apply = %+v, want %+v", got, want)
+	}
+}
+
+func TestLoadWithoutTempoFieldGivesDefaultTempo(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "mixer.json")
+	_ = os.WriteFile(path, []byte(`{"volume_db":-3,"muted":false}`), 0o644)
+	if got, _ := control.Load(path); got.TempoBPM != control.DefaultTempoBPM {
+		t.Errorf("TempoBPM = %d, want %d", got.TempoBPM, control.DefaultTempoBPM)
+	}
+}
+
+func TestLoadWithoutFileGivesDefaultTempo(t *testing.T) {
+	if got, _ := control.Load(filepath.Join(t.TempDir(), "mixer.json")); got.TempoBPM != control.DefaultTempoBPM {
+		t.Errorf("TempoBPM = %d, want %d", got.TempoBPM, control.DefaultTempoBPM)
 	}
 }

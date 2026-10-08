@@ -34,7 +34,7 @@ const (
 	limiterCeilingDB = -24.0
 	soundQueue       = 64
 	dirMode          = 0o755
-	statusJoin       = ", "
+	statusJoin       = " "
 )
 
 var (

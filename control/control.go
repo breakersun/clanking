@@ -23,16 +23,27 @@ const (
 	Volume = "volume"
 	Status = "status"
 	Toggle = "toggle"
+	Tempo  = "tempo"
+)
+
+// The tempo range in beats per minute, and the tempo before any is set.
+const (
+	MinTempoBPM     = 60
+	MaxTempoBPM     = 240
+	DefaultTempoBPM = 120
 )
 
 // MaxVolumeDB is the loudest volume, where limited output reaches full scale.
 const MaxVolumeDB = 24.0
 
 const (
-	settingsMode = 0o644
-	mutedState   = "muted"
-	unmutedState = "unmuted"
-	statusFormat = "volume %g dB, %s"
+	settingsMode  = 0o644
+	mutedState    = "muted"
+	unmutedState  = "unmuted"
+	volumeFormat  = "volume %g dB"
+	tempoFormat   = "%d bpm"
+	partSeparator = ", "
+	statusParts   = 3
 )
 
 // ErrInvalid reports a malformed control request.
@@ -45,12 +56,14 @@ var ErrStatus = errors.New("invalid status line")
 type Settings struct {
 	VolumeDB float64 `json:"volume_db"`
 	Muted    bool    `json:"muted"`
+	TempoBPM int     `json:"tempo_bpm"`
 }
 
 // Request is one parsed control command.
 type Request struct {
 	Command  string
 	VolumeDB float64
+	TempoBPM int
 }
 
 // Parse reads one request line.
@@ -64,14 +77,22 @@ func Parse(line string) (Request, error) {
 		if err == nil && !math.IsNaN(db) && !math.IsInf(db, 0) && db <= MaxVolumeDB {
 			return Request{Command: Volume, VolumeDB: db}, nil
 		}
+	case len(fields) == 2 && fields[0] == Tempo:
+		bpm, err := strconv.Atoi(fields[1])
+		if err == nil && bpm >= MinTempoBPM && bpm <= MaxTempoBPM {
+			return Request{Command: Tempo, TempoBPM: bpm}, nil
+		}
 	}
 	return Request{}, fmt.Errorf("%w: %q", ErrInvalid, strings.TrimSpace(line))
 }
 
 // String renders the request as one protocol line.
 func (r Request) String() string {
-	if r.Command == Volume {
+	switch r.Command {
+	case Volume:
 		return fmt.Sprintf("%s %g", Volume, r.VolumeDB)
+	case Tempo:
+		return fmt.Sprintf("%s %d", Tempo, r.TempoBPM)
 	}
 	return r.Command
 }
@@ -87,6 +108,8 @@ func (s Settings) Apply(r Request) Settings {
 		s.Muted = !s.Muted
 	case Volume:
 		s.VolumeDB = r.VolumeDB
+	case Tempo:
+		s.TempoBPM = r.TempoBPM
 	}
 	return s
 }
@@ -105,18 +128,22 @@ func (s Settings) String() string {
 	if s.Muted {
 		state = mutedState
 	}
-	return fmt.Sprintf(statusFormat, s.VolumeDB, state)
+	return strings.Join([]string{fmt.Sprintf(volumeFormat, s.VolumeDB), state, fmt.Sprintf(tempoFormat, s.TempoBPM)}, partSeparator)
 }
 
 // ParseSettings reads a status line written by Settings.String.
 func ParseSettings(line string) (Settings, error) {
 	var s Settings
-	var state string
-	_, err := fmt.Sscanf(line, statusFormat, &s.VolumeDB, &state)
-	if err != nil || !slices.Contains([]string{mutedState, unmutedState}, state) {
+	parts := strings.Split(line, partSeparator)
+	if len(parts) != statusParts || !slices.Contains([]string{mutedState, unmutedState}, parts[1]) {
 		return Settings{}, fmt.Errorf("%w: %q", ErrStatus, line)
 	}
-	s.Muted = state == mutedState
+	_, volumeErr := fmt.Sscanf(parts[0], volumeFormat, &s.VolumeDB)
+	_, tempoErr := fmt.Sscanf(parts[2], tempoFormat, &s.TempoBPM)
+	if volumeErr != nil || tempoErr != nil {
+		return Settings{}, fmt.Errorf("%w: %q", ErrStatus, line)
+	}
+	s.Muted = parts[1] == mutedState
 	return s, nil
 }
 
@@ -149,16 +176,16 @@ func (c *Controller) Handle(r Request) (Settings, error) {
 	return next, nil
 }
 
-// Load reads saved settings, giving the defaults when none were saved.
+// Load reads saved settings over the defaults.
 func Load(path string) (Settings, error) {
+	s := Settings{TempoBPM: DefaultTempoBPM}
 	data, err := os.ReadFile(path)
 	if errors.Is(err, fs.ErrNotExist) {
-		return Settings{}, nil
+		return s, nil
 	}
 	if err != nil {
-		return Settings{}, err
+		return s, err
 	}
-	var s Settings
 	return s, json.Unmarshal(data, &s)
 }
 
