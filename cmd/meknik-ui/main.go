@@ -4,6 +4,7 @@ package main
 import (
 	"fmt"
 	"log/slog"
+	"math"
 	"os"
 	"path/filepath"
 	"time"
@@ -27,6 +28,8 @@ const (
 	volumeStepDB   = 0.5
 	volumeDigits   = 1
 	volumeDebounce = 100 * time.Millisecond
+	zeroDetentDB   = 1.0
+	zeroMark       = "0"
 	spacing        = 6
 	requestQueue   = 16
 )
@@ -79,6 +82,8 @@ func newPanel(app *gtk.Application, ask func(control.Request) (control.Settings,
 	p.volume.SetDrawValue(true)
 	p.volume.SetDigits(volumeDigits)
 	p.volume.SetHExpand(true)
+	p.volume.AddMark(0, gtk.PosBottom, zeroMark)
+	p.volume.ConnectChangeValue(p.volumeDragged)
 	p.volume.ConnectValueChanged(p.volumeChanged)
 	p.mute.ConnectToggled(p.muteToggled)
 	box := gtk.NewBox(gtk.OrientationVertical, spacing)
@@ -90,6 +95,21 @@ func newPanel(app *gtk.Application, ask func(control.Request) (control.Settings,
 	window.SetChild(box)
 	window.SetVisible(true)
 	return p
+}
+
+func (p *panel) volumeDragged(scroll gtk.ScrollType, db float64) bool {
+	if scroll != gtk.ScrollJump || detent(db) == db {
+		return false
+	}
+	p.volume.SetValue(detent(db))
+	return true
+}
+
+func detent(db float64) float64 {
+	if math.Abs(db) < zeroDetentDB {
+		return 0
+	}
+	return db
 }
 
 func (p *panel) volumeChanged() {

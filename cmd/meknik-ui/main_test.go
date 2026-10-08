@@ -27,3 +27,15 @@ func TestForwardRepliesInRequestOrder(t *testing.T) {
 		t.Errorf("replies = %v, want %v", replies, want)
 	}
 }
+
+func TestDetentSnapsNearZeroToZero(t *testing.T) {
+	if got := detent(-0.8); got != 0 {
+		t.Errorf("detent(-0.8) = %v, want 0", got)
+	}
+}
+
+func TestDetentKeepsValuesOutsideIt(t *testing.T) {
+	if got := detent(1.5); got != 1.5 {
+		t.Errorf("detent(1.5) = %v, want 1.5", got)
+	}
+}
