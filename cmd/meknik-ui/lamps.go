@@ -13,14 +13,21 @@ import (
 )
 
 const (
-	lampSize       = 14
-	lampSpacing    = 8
-	lampHold       = 40 * time.Millisecond
-	lampClass      = "lamp"
-	litClass       = "lit"
-	lampDark       = "#1b2130"
-	lampBaseRule   = ".lamp { min-width: %dpx; min-height: %dpx; border-radius: %dpx; background-color: %s; transition: background-color 200ms ease-out; }\n.lamp.lit { transition: none; }\n"
-	lampColourRule = ".lamp-%s.lit { background-color: %s; }\n"
+	lampSize        = 14
+	lampSpacing     = 10
+	lampBezel       = 2
+	lampHold        = 40 * time.Millisecond
+	lampFade        = 400 * time.Millisecond
+	lampUnlitShade  = 0.32
+	lampGlowOpacity = 0.85
+	lampClass       = "lamp"
+	litClass        = "lit"
+	lampBaseRule    = ".lamp { min-width: %dpx; min-height: %dpx; border-radius: %dpx; border: %dpx solid #0a0c10; " +
+		"background-image: radial-gradient(circle at 35%% 30%%, rgba(255,255,255,0.55), rgba(255,255,255,0) 50%%); " +
+		"box-shadow: inset 0 1px 2px rgba(0,0,0,0.7), 0 1px 0 rgba(255,255,255,0.08); " +
+		"transition: background-color %[5]dms ease-out, box-shadow %[5]dms ease-out; }\n.lamp.lit { transition: none; }\n"
+	lampUnlitRule = ".lamp-%s { background-color: shade(%s, %g); }\n"
+	lampLitRule   = ".lamp-%[1]s.lit { background-color: %[2]s; box-shadow: inset 0 1px 2px rgba(0,0,0,0.3), 0 0 8px 2px alpha(%[2]s, %[3]g); }\n"
 )
 
 var lampColours = map[synth.Cue]string{
@@ -44,9 +51,10 @@ type lamps struct {
 
 func lampCSS() string {
 	var css strings.Builder
-	fmt.Fprintf(&css, lampBaseRule, lampSize, lampSize, lampSize/2, lampDark)
+	fmt.Fprintf(&css, lampBaseRule, lampSize, lampSize, lampSize/2+lampBezel, lampBezel, lampFade.Milliseconds())
 	for _, c := range synth.Cues {
-		fmt.Fprintf(&css, lampColourRule, c, lampColours[c])
+		fmt.Fprintf(&css, lampUnlitRule, c, lampColours[c], lampUnlitShade)
+		fmt.Fprintf(&css, lampLitRule, c, lampColours[c], lampGlowOpacity)
 	}
 	return css.String()
 }

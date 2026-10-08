@@ -3,7 +3,7 @@
 ## Purpose
 
 Give `meknik-ui` a row of lamps, one per cue, that flash when the daemon
-plays a cue and fade to black over about 200 ms. Keep every open window
+plays a cue and fade back to dim over about 400 ms. Keep every open window
 in step with the daemon's volume and mute, whoever changes them. Also
 give the window an even inner margin.
 
@@ -73,12 +73,17 @@ each change.
   four sides. Row spacing stays at 6 px.
 - **Lamps**: a horizontal row of 10 small round lamps, in `synth.Cues`
   order, above the volume scale. Each lamp has its own colour from the
-  icon's LCARS palette and a tooltip with the cue name. A lamp's base
-  style is near-black with
-  `transition: background-color 200ms ease-out`. A cue adds the
-  lamp's `lit` class, which sets its colour with no transition. The
-  class is removed after a 40 ms hold (`lampHold`), and then the CSS
-  transition fades the lamp to black. A cue arriving during a fade lights it again.
+  icon's LCARS palette and a tooltip with the cue name. The lamps look
+  like LEDs: a 2 px dark bezel, an inner shadow, and a fixed glossy
+  highlight (a radial gradient) on the lens. An unlit lamp shows its
+  own colour dimmed (`shade(colour, 0.32)`), like a switched-off LED.
+  The base style has
+  `transition: background-color 400ms ease-out, box-shadow 400ms ease-out`.
+  A cue adds the lamp's `lit` class, which sets the full colour and a
+  glow in that colour (`box-shadow 0 0 8px 2px`) with no transition.
+  The class is removed after a 40 ms hold (`lampHold`), and then the
+  CSS transition fades the colour and the glow back to dim. A cue
+  arriving during a fade lights it again.
   The style sheet is one CSS string in the binary, loaded with a
   `gtk.CSSProvider` for the display.
 - **Watching**: a goroutine runs `transport.Watch` in a loop. Each line
