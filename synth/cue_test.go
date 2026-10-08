@@ -2,6 +2,7 @@ package synth_test
 
 import (
 	"math/rand/v2"
+	"slices"
 	"testing"
 
 	"meknik/internal/approx"
@@ -134,5 +135,23 @@ func TestDoneSitsWellBelowFullScale(t *testing.T) {
 func TestTickSitsBelowCues(t *testing.T) {
 	if got := synth.CuePeakDB - synth.TickPeakDB; got != 6 {
 		t.Errorf("cue minus tick = %v dB, want 6", got)
+	}
+}
+
+func TestCuesListsEveryCueInOrder(t *testing.T) {
+	want := []synth.Cue{synth.Tick, synth.Spawn, synth.Return, synth.Done, synth.Failed, synth.Permission, synth.Ask, synth.Reply, synth.Milestone, synth.Noted}
+	if !slices.Equal(synth.Cues, want) {
+		t.Errorf("Cues = %v, want %v", synth.Cues, want)
+	}
+}
+
+func TestEveryListedCueHasASound(t *testing.T) {
+	rng := rand.New(rand.NewPCG(1, 2))
+	for _, c := range synth.Cues {
+		t.Run(string(c), func(t *testing.T) {
+			if _, ok := synth.Sound(c, rng); !ok {
+				t.Errorf("Sound(%q) unknown", c)
+			}
+		})
 	}
 }

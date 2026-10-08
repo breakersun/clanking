@@ -22,6 +22,9 @@ const (
 	Noted      Cue = "noted"
 )
 
+// Cues lists every cue in self-test order.
+var Cues = []Cue{Tick, Spawn, Return, Done, Failed, Permission, Ask, Reply, Milestone, Noted}
+
 // Peak levels in dBFS, with the random level spread applied to ticks.
 const (
 	TickPeakDB   = -36.0
