@@ -10,6 +10,7 @@ import (
 
 	"golang.org/x/sys/unix"
 
+	"meknik/control"
 	"meknik/grid"
 	"meknik/mixer"
 	"meknik/playback"
@@ -39,13 +40,13 @@ func Lock(path string) (*os.File, bool, error) {
 	return f, true, nil
 }
 
-// Play schedules queued sounds on the grid and mixes them into out block by block, applying queued gains, until idle passes with no new sound, or forever with NeverIdle.
-func Play(m *mixer.Mixer, s *grid.Scheduler, sounds <-chan mixer.Sound, gains <-chan float64, out io.Writer, idle time.Duration, now func() time.Time, started func(mixer.Sound)) error {
+// Play schedules queued sounds on the grid and mixes them into out block by block, applying queued settings, until idle passes with no new sound, or forever with NeverIdle.
+func Play(m *mixer.Mixer, s *grid.Scheduler, sounds <-chan mixer.Sound, settings <-chan control.Settings, out io.Writer, idle time.Duration, now func() time.Time, started func(mixer.Sound)) error {
 	block := make([]float32, BlockFrames)
 	var pcm []byte
 	last := now()
 	for idle == NeverIdle || now().Sub(last) < idle {
-		last = drain(m, s, sounds, gains, last, now)
+		last = drain(m, s, sounds, settings, last, now)
 		for _, st := range s.Due(BlockFrames) {
 			m.AddAt(st.Sound, st.Offset)
 			started(st.Sound)
@@ -59,7 +60,7 @@ func Play(m *mixer.Mixer, s *grid.Scheduler, sounds <-chan mixer.Sound, gains <-
 	return nil
 }
 
-func drain(m *mixer.Mixer, s *grid.Scheduler, sounds <-chan mixer.Sound, gains <-chan float64, last time.Time, now func() time.Time) time.Time {
+func drain(m *mixer.Mixer, s *grid.Scheduler, sounds <-chan mixer.Sound, settings <-chan control.Settings, last time.Time, now func() time.Time) time.Time {
 	for {
 		select {
 		case snd := <-sounds:
@@ -67,8 +68,9 @@ func drain(m *mixer.Mixer, s *grid.Scheduler, sounds <-chan mixer.Sound, gains <
 				slog.Warn("grid queue full, sound dropped", "cue", snd.Cue)
 			}
 			last = now()
-		case g := <-gains:
-			m.SetGain(g)
+		case st := <-settings:
+			m.SetGain(st.Gain())
+			s.SetTempo(st.TempoBPM)
 		default:
 			return last
 		}

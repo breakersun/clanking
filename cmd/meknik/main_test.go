@@ -103,3 +103,15 @@ func TestStatusLineJoinsSettingsAndGrid(t *testing.T) {
 		t.Errorf("statusLine = %q, want %q", got, want)
 	}
 }
+
+func TestRunRejectsOutOfRangeTempoBeforeContactingDaemon(t *testing.T) {
+	if err := run([]string{"tempo", "300"}); !errors.Is(err, control.ErrInvalid) {
+		t.Errorf("run error = %v, want %v", err, control.ErrInvalid)
+	}
+}
+
+func TestUsageListsTempo(t *testing.T) {
+	if !strings.Contains(errUsage.Error(), "| tempo <bpm>") {
+		t.Errorf("usage = %q, want it to list tempo", errUsage)
+	}
+}

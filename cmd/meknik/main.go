@@ -38,7 +38,7 @@ const (
 )
 
 var (
-	errUsage         = errors.New("usage: meknik hook [--no-spawn] | daemon | play <cue> | mute | unmute | toggle | volume <dB> | status | selftest")
+	errUsage         = errors.New("usage: meknik hook [--no-spawn] | daemon | play <cue> | mute | unmute | toggle | volume <dB> | tempo <bpm> | status | selftest")
 	errSpawnDisabled = errors.New("no daemon is running and spawning is disabled")
 )
 
@@ -71,7 +71,7 @@ func run(args []string) error {
 		return runPlay(synth.Cue(args[1]))
 	case len(args) == 1 && slices.Contains([]string{control.Mute, control.Unmute, control.Toggle, control.Status}, args[0]):
 		return runControl(args[0])
-	case len(args) == 2 && args[0] == control.Volume:
+	case len(args) == 2 && slices.Contains([]string{control.Volume, control.Tempo}, args[0]):
 		return runControl(strings.Join(args, " "))
 	case slices.Equal(args, []string{"selftest"}):
 		return selftest.RunDaemon(spawnDaemon)
@@ -185,11 +185,11 @@ func runDaemon() error {
 	}
 	sched := grid.New(settings.TempoBPM)
 	sounds := make(chan mixer.Sound, soundQueue)
-	gains := make(chan float64, soundQueue)
+	changes := make(chan control.Settings, soundQueue)
 	hub := events.NewHub()
 	controller := control.NewController(settings,
 		func(s control.Settings) error { return control.Save(settingsPath, s) },
-		func(s control.Settings) { gains <- s.Gain(); hub.Publish(events.SettingsLine(s)) })
+		func(s control.Settings) { changes <- s; hub.Publish(events.SettingsLine(s)) })
 	go func() {
 		if err := transport.Serve(conn, enqueue(sounds, newRNG())); err != nil {
 			slog.Error("cue socket failed", "err", err)
@@ -210,7 +210,7 @@ func runDaemon() error {
 		}
 	}()
 	slog.Info("daemon started", "socket", socket, "settings", settings.String(), "idle", idle)
-	playErr := daemon.Play(mixer.New(settings.Gain(), synth.Amplitude(limiterCeilingDB)), sched, sounds, gains, stream, idle, time.Now, announce(hub.Publish))
+	playErr := daemon.Play(mixer.New(settings.Gain(), synth.Amplitude(limiterCeilingDB)), sched, sounds, changes, stream, idle, time.Now, announce(hub.Publish))
 	slog.Info("daemon stopping")
 	return errors.Join(playErr, conn.Close(), os.Remove(socket), listener.Close(), eventsListener.Close(), stream.Close())
 }
