@@ -56,7 +56,7 @@ func (h *Hub) Publish(line string) {
 	}
 }
 
-// CueLine is the event line for a cue the daemon accepted.
+// CueLine is the event line for a cue whose sound starts.
 func CueLine(c synth.Cue) string { return cueKind + kindSeparator + string(c) }
 
 // SettingsLine is the event line for the daemon's current settings.
