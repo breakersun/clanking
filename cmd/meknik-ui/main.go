@@ -28,15 +28,16 @@ const (
 	volumeDigits   = 1
 	volumeDebounce = 100 * time.Millisecond
 	spacing        = 6
+	requestQueue   = 16
 )
 
 type panel struct {
-	volume  *gtk.Scale
-	mute    *gtk.ToggleButton
-	errors  *gtk.Label
-	ask     func(control.Request) (control.Settings, error)
-	pending glib.SourceHandle
-	syncing bool
+	volume   *gtk.Scale
+	mute     *gtk.ToggleButton
+	errors   *gtk.Label
+	requests chan control.Request
+	pending  glib.SourceHandle
+	syncing  bool
 }
 
 func main() {
@@ -69,11 +70,12 @@ func spawnSibling() error {
 
 func newPanel(app *gtk.Application, ask func(control.Request) (control.Settings, error)) *panel {
 	p := &panel{
-		volume: gtk.NewScaleWithRange(gtk.OrientationHorizontal, minVolumeDB, control.MaxVolumeDB, volumeStepDB),
-		mute:   gtk.NewToggleButtonWithLabel(muteLabel),
-		errors: gtk.NewLabel(""),
-		ask:    ask,
+		volume:   gtk.NewScaleWithRange(gtk.OrientationHorizontal, minVolumeDB, control.MaxVolumeDB, volumeStepDB),
+		mute:     gtk.NewToggleButtonWithLabel(muteLabel),
+		errors:   gtk.NewLabel(""),
+		requests: make(chan control.Request, requestQueue),
 	}
+	go forward(p.requests, ask, func(s control.Settings, err error) { glib.IdleAdd(func() { p.show(s, err) }) })
 	p.volume.SetDrawValue(true)
 	p.volume.SetDigits(volumeDigits)
 	p.volume.SetHExpand(true)
@@ -114,11 +116,12 @@ func (p *panel) muteToggled() {
 	p.send(control.Request{Command: command})
 }
 
-func (p *panel) send(r control.Request) {
-	go func() {
-		settings, err := p.ask(r)
-		glib.IdleAdd(func() { p.show(settings, err) })
-	}()
+func (p *panel) send(r control.Request) { p.requests <- r }
+
+func forward(requests <-chan control.Request, ask func(control.Request) (control.Settings, error), reply func(control.Settings, error)) {
+	for r := range requests {
+		reply(ask(r))
+	}
 }
 
 func (p *panel) show(settings control.Settings, err error) {
