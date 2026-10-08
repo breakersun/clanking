@@ -27,6 +27,7 @@ const (
 	lockName         = "meknik.lock"
 	settingsName     = "mixer.json"
 	noSpawnFlag      = "--no-spawn"
+	helpFlag         = "--help"
 	idleEnv          = "MEKNIK_IDLE_TIMEOUT"
 	limiterCeilingDB = -24.0
 	soundQueue       = 64
@@ -60,6 +61,9 @@ func run(args []string) error {
 		return runHook(refuseSpawn)
 	case slices.Equal(args, []string{"daemon"}):
 		return runDaemon()
+	case slices.Equal(args, []string{"play", helpFlag}):
+		_, err := fmt.Println(playUsage())
+		return err
 	case len(args) == 2 && args[0] == "play":
 		return runPlay(synth.Cue(args[1]))
 	case len(args) == 1 && slices.Contains([]string{control.Mute, control.Unmute, control.Toggle, control.Status}, args[0]):
@@ -70,6 +74,14 @@ func run(args []string) error {
 		return selftest.RunDaemon(spawnDaemon)
 	}
 	return errUsage
+}
+
+func playUsage() string {
+	names := make([]string, len(synth.Cues))
+	for i, c := range synth.Cues {
+		names[i] = string(c)
+	}
+	return "usage: meknik play <cue>\ncues: " + strings.Join(names, " ")
 }
 
 func runHook(spawn func() error) error {

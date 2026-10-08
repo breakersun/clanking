@@ -80,3 +80,10 @@ func TestUsageListsSelftest(t *testing.T) {
 		t.Errorf("usage = %q, want it to list selftest", errUsage)
 	}
 }
+
+func TestPlayUsageListsEveryCue(t *testing.T) {
+	want := "usage: meknik play <cue>\ncues: tick spawn return failed permission ask reply milestone noted done"
+	if got := playUsage(); got != want {
+		t.Errorf("playUsage = %q, want %q", got, want)
+	}
+}
