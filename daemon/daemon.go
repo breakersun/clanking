@@ -4,11 +4,13 @@ package daemon
 import (
 	"errors"
 	"io"
+	"log/slog"
 	"os"
 	"time"
 
 	"golang.org/x/sys/unix"
 
+	"meknik/grid"
 	"meknik/mixer"
 	"meknik/playback"
 )
@@ -37,13 +39,17 @@ func Lock(path string) (*os.File, bool, error) {
 	return f, true, nil
 }
 
-// Play mixes queued sounds into out block by block, applying queued gains, until idle passes with no new sound, or forever with NeverIdle.
-func Play(m *mixer.Mixer, sounds <-chan mixer.Sound, gains <-chan float64, out io.Writer, idle time.Duration, now func() time.Time) error {
+// Play schedules queued sounds on the grid and mixes them into out block by block, applying queued gains, until idle passes with no new sound, or forever with NeverIdle.
+func Play(m *mixer.Mixer, s *grid.Scheduler, sounds <-chan mixer.Sound, gains <-chan float64, out io.Writer, idle time.Duration, now func() time.Time, started func(mixer.Sound)) error {
 	block := make([]float32, BlockFrames)
 	var pcm []byte
 	last := now()
 	for idle == NeverIdle || now().Sub(last) < idle {
-		last = drain(m, sounds, gains, last, now)
+		last = drain(m, s, sounds, gains, last, now)
+		for _, st := range s.Due(BlockFrames) {
+			m.AddAt(st.Sound, st.Offset)
+			started(st.Sound)
+		}
 		m.Fill(block)
 		pcm = playback.Encode(pcm[:0], block)
 		if _, err := out.Write(pcm); err != nil {
@@ -53,11 +59,13 @@ func Play(m *mixer.Mixer, sounds <-chan mixer.Sound, gains <-chan float64, out i
 	return nil
 }
 
-func drain(m *mixer.Mixer, sounds <-chan mixer.Sound, gains <-chan float64, last time.Time, now func() time.Time) time.Time {
+func drain(m *mixer.Mixer, s *grid.Scheduler, sounds <-chan mixer.Sound, gains <-chan float64, last time.Time, now func() time.Time) time.Time {
 	for {
 		select {
-		case s := <-sounds:
-			m.Add(s)
+		case snd := <-sounds:
+			if !s.Offer(snd) {
+				slog.Warn("grid queue full, sound dropped", "cue", snd.Cue)
+			}
 			last = now()
 		case g := <-gains:
 			m.SetGain(g)

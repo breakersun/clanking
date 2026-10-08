@@ -7,12 +7,15 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 
 	"meknik/daemon"
+	"meknik/grid"
 	"meknik/internal/approx"
 	"meknik/mixer"
+	"meknik/synth"
 )
 
 const (
@@ -42,7 +45,7 @@ func steppingClock() func() time.Time {
 
 func play(sounds <-chan mixer.Sound) *bytes.Buffer {
 	var out bytes.Buffer
-	_ = daemon.Play(mixer.New(unity, wideCeiling), sounds, make(chan float64), &out, idle, steppingClock())
+	_ = daemon.Play(mixer.New(unity, wideCeiling), grid.New(), sounds, make(chan float64), &out, idle, steppingClock(), func(mixer.Sound) {})
 	return &out
 }
 
@@ -67,7 +70,7 @@ func TestLockIsFreeAfterRelease(t *testing.T) {
 }
 
 func TestPlayStopsWhenIdle(t *testing.T) {
-	err := daemon.Play(mixer.New(unity, wideCeiling), make(chan mixer.Sound), make(chan float64), &bytes.Buffer{}, idle, steppingClock())
+	err := daemon.Play(mixer.New(unity, wideCeiling), grid.New(), make(chan mixer.Sound), make(chan float64), &bytes.Buffer{}, idle, steppingClock(), func(mixer.Sound) {})
 	if err != nil {
 		t.Errorf("Play error = %v, want nil", err)
 	}
@@ -89,7 +92,7 @@ func TestPlayWritesQueuedSound(t *testing.T) {
 }
 
 func TestPlayReportsWriteFailure(t *testing.T) {
-	err := daemon.Play(mixer.New(unity, wideCeiling), make(chan mixer.Sound), make(chan float64), failingWriter{}, idle, steppingClock())
+	err := daemon.Play(mixer.New(unity, wideCeiling), grid.New(), make(chan mixer.Sound), make(chan float64), failingWriter{}, idle, steppingClock(), func(mixer.Sound) {})
 	if !errors.Is(err, errBroken) {
 		t.Errorf("Play error = %v, want %v", err, errBroken)
 	}
@@ -107,7 +110,7 @@ func (w *brokenAfter) Write(p []byte) (int, error) {
 
 func TestPlayWithNeverIdleKeepsPlaying(t *testing.T) {
 	out := &brokenAfter{writes: 100}
-	err := daemon.Play(mixer.New(unity, wideCeiling), make(chan mixer.Sound), make(chan float64), out, daemon.NeverIdle, steppingClock())
+	err := daemon.Play(mixer.New(unity, wideCeiling), grid.New(), make(chan mixer.Sound), make(chan float64), out, daemon.NeverIdle, steppingClock(), func(mixer.Sound) {})
 	if !errors.Is(err, errBroken) {
 		t.Errorf("Play error = %v, want %v", err, errBroken)
 	}
@@ -128,8 +131,19 @@ func TestPlayAppliesQueuedGain(t *testing.T) {
 	gains := make(chan float64, 1)
 	gains <- 0
 	var out bytes.Buffer
-	_ = daemon.Play(mixer.New(unity, wideCeiling), sounds, gains, &out, idle, steppingClock())
+	_ = daemon.Play(mixer.New(unity, wideCeiling), grid.New(), sounds, gains, &out, idle, steppingClock(), func(mixer.Sound) {})
 	if got := math.Float32frombits(binary.LittleEndian.Uint32(out.Bytes())); got != 0 {
 		t.Errorf("first sample = %v, want 0", got)
+	}
+}
+
+func TestPlayReportsStartedSound(t *testing.T) {
+	sounds := make(chan mixer.Sound, 1)
+	sounds <- mixer.Sound{Samples: []float32{sample}, Cue: synth.Done}
+	var started []synth.Cue
+	_ = daemon.Play(mixer.New(unity, wideCeiling), grid.New(), sounds, make(chan float64), &bytes.Buffer{}, idle, steppingClock(),
+		func(s mixer.Sound) { started = append(started, s.Cue) })
+	if want := []synth.Cue{synth.Done}; !slices.Equal(started, want) {
+		t.Errorf("started = %v, want %v", started, want)
 	}
 }

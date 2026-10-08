@@ -15,6 +15,7 @@ import (
 	"meknik/control"
 	"meknik/daemon"
 	"meknik/events"
+	"meknik/grid"
 	"meknik/hookevent"
 	"meknik/mixer"
 	"meknik/playback"
@@ -184,7 +185,7 @@ func runDaemon() error {
 		func(s control.Settings) error { return control.Save(settingsPath, s) },
 		func(s control.Settings) { gains <- s.Gain(); hub.Publish(events.SettingsLine(s)) })
 	go func() {
-		if err := transport.Serve(conn, enqueue(sounds, newRNG(), hub.Publish)); err != nil {
+		if err := transport.Serve(conn, enqueue(sounds, newRNG())); err != nil {
 			slog.Error("cue socket failed", "err", err)
 		}
 	}()
@@ -203,12 +204,12 @@ func runDaemon() error {
 		}
 	}()
 	slog.Info("daemon started", "socket", socket, "settings", settings.String(), "idle", idle)
-	playErr := daemon.Play(mixer.New(settings.Gain(), synth.Amplitude(limiterCeilingDB)), sounds, gains, stream, idle, time.Now)
+	playErr := daemon.Play(mixer.New(settings.Gain(), synth.Amplitude(limiterCeilingDB)), grid.New(), sounds, gains, stream, idle, time.Now, announce(hub.Publish))
 	slog.Info("daemon stopping")
 	return errors.Join(playErr, conn.Close(), os.Remove(socket), listener.Close(), eventsListener.Close(), stream.Close())
 }
 
-func enqueue(sounds chan<- mixer.Sound, rng *rand.Rand, publish func(string)) func(synth.Cue) {
+func enqueue(sounds chan<- mixer.Sound, rng *rand.Rand) func(synth.Cue) {
 	return func(c synth.Cue) {
 		samples, ok := synth.Sound(c, rng)
 		if !ok {
@@ -217,11 +218,14 @@ func enqueue(sounds chan<- mixer.Sound, rng *rand.Rand, publish func(string)) fu
 		}
 		select {
 		case sounds <- mixer.Sound{Samples: samples, Cue: c}:
-			publish(events.CueLine(c))
 		default:
 			slog.Warn("sound queue full, cue dropped", "cue", c)
 		}
 	}
+}
+
+func announce(publish func(string)) func(mixer.Sound) {
+	return func(s mixer.Sound) { publish(events.CueLine(s.Cue)) }
 }
 
 func runPlay(c synth.Cue) error {

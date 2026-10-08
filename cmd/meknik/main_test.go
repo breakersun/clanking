@@ -36,7 +36,7 @@ func TestLimiterCeilingSitsSixDecibelsAboveCues(t *testing.T) {
 func TestEnqueueDropsWhenQueueIsFull(t *testing.T) {
 	returned := make(chan struct{})
 	go func() {
-		enqueue(make(chan mixer.Sound), newRNG(), func(string) {})(synth.Done)
+		enqueue(make(chan mixer.Sound), newRNG())(synth.Done)
 		close(returned)
 	}()
 	select {
@@ -89,18 +89,10 @@ func TestPlayUsageListsEveryCue(t *testing.T) {
 	}
 }
 
-func TestEnqueuePublishesAcceptedCue(t *testing.T) {
+func TestAnnouncePublishesStartedCue(t *testing.T) {
 	var published []string
-	enqueue(make(chan mixer.Sound, 1), newRNG(), func(line string) { published = append(published, line) })(synth.Done)
+	announce(func(line string) { published = append(published, line) })(mixer.Sound{Cue: synth.Done})
 	if want := []string{"cue done"}; !slices.Equal(published, want) {
 		t.Errorf("published = %q, want %q", published, want)
-	}
-}
-
-func TestEnqueuePublishesNothingForDroppedCue(t *testing.T) {
-	var published []string
-	enqueue(make(chan mixer.Sound), newRNG(), func(line string) { published = append(published, line) })(synth.Done)
-	if len(published) != 0 {
-		t.Errorf("published = %q, want none", published)
 	}
 }
