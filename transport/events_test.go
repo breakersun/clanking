@@ -10,9 +10,10 @@ import (
 )
 
 const (
-	eventsName = "meknik.events"
-	snapshot   = "settings volume 0 dB, unmuted"
-	eventWait  = time.Second
+	eventsName  = "meknik.events"
+	snapshot    = "settings volume 0 dB, unmuted"
+	eventWait   = time.Second
+	watchBuffer = 8
 )
 
 func serveEvents(t *testing.T, hub *events.Hub) string {
@@ -28,7 +29,7 @@ func serveEvents(t *testing.T, hub *events.Hub) string {
 }
 
 func watch(path string) <-chan string {
-	lines := make(chan string, 8)
+	lines := make(chan string, watchBuffer)
 	go func() { _ = transport.Watch(path, func(line string) { lines <- line }) }()
 	return lines
 }
@@ -63,7 +64,11 @@ func TestWatchReceivesPublishedLine(t *testing.T) {
 
 func TestWatchReturnsWhenServerCloses(t *testing.T) {
 	path := filepath.Join(t.TempDir(), eventsName)
-	l, _ := transport.ListenStream(path)
+	l, err := transport.ListenStream(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = l.Close() })
 	go func() {
 		conn, _ := l.Accept()
 		_ = conn.Close()

@@ -77,8 +77,8 @@ each change.
   style is near-black with
   `transition: background-color 200ms ease-out`. A cue adds the
   lamp's `lit` class, which sets its colour with no transition. The
-  class is removed on the next frame, and the CSS transition fades
-  the lamp to black. A cue arriving during a fade lights it again.
+  class is removed after a 40 ms hold (`lampHold`), and then the CSS
+  transition fades the lamp to black. A cue arriving during a fade lights it again.
   The style sheet is one CSS string in the binary, loaded with a
   `gtk.CSSProvider` for the display.
 - **Watching**: a goroutine runs `transport.Watch` in a loop. Each line
