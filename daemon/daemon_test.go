@@ -129,10 +129,10 @@ func TestLockRefusesSymlink(t *testing.T) {
 func TestPlayAppliesQueuedGain(t *testing.T) {
 	sounds := make(chan mixer.Sound, 1)
 	sounds <- mixer.Sound{Samples: []float32{sample}}
-	gains := make(chan control.Settings, 1)
-	gains <- control.Settings{Muted: true, TempoBPM: control.DefaultTempoBPM}
+	settings := make(chan control.Settings, 1)
+	settings <- control.Settings{Muted: true, TempoBPM: control.DefaultTempoBPM}
 	var out bytes.Buffer
-	_ = daemon.Play(mixer.New(unity, wideCeiling), grid.New(control.DefaultTempoBPM), sounds, gains, &out, idle, steppingClock(), func(mixer.Sound) {})
+	_ = daemon.Play(mixer.New(unity, wideCeiling), grid.New(control.DefaultTempoBPM), sounds, settings, &out, idle, steppingClock(), func(mixer.Sound) {})
 	if got := math.Float32frombits(binary.LittleEndian.Uint32(out.Bytes())); got != 0 {
 		t.Errorf("first sample = %v, want 0", got)
 	}

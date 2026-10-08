@@ -11,7 +11,7 @@ import (
 
 const (
 	controlName = "meknik.ctl"
-	gridState   = "120 bpm in 16ths, 0 queued, 0 dropped"
+	gridState   = "in 16ths, 0 queued, 0 dropped"
 )
 
 var errSave = errors.New("save failed")

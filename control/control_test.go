@@ -188,14 +188,10 @@ func TestApplyTempo(t *testing.T) {
 
 func TestLoadWithoutTempoFieldGivesDefaultTempo(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "mixer.json")
-	_ = os.WriteFile(path, []byte(`{"volume_db":-3,"muted":false}`), 0o644)
-	if got, _ := control.Load(path); got.TempoBPM != control.DefaultTempoBPM {
-		t.Errorf("TempoBPM = %d, want %d", got.TempoBPM, control.DefaultTempoBPM)
+	if err := os.WriteFile(path, []byte(`{"volume_db":-3,"muted":false}`), settingsFileMode); err != nil {
+		t.Fatal(err)
 	}
-}
-
-func TestLoadWithoutFileGivesDefaultTempo(t *testing.T) {
-	if got, _ := control.Load(filepath.Join(t.TempDir(), "mixer.json")); got.TempoBPM != control.DefaultTempoBPM {
+	if got, _ := control.Load(path); got.TempoBPM != control.DefaultTempoBPM {
 		t.Errorf("TempoBPM = %d, want %d", got.TempoBPM, control.DefaultTempoBPM)
 	}
 }
