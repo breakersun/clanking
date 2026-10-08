@@ -19,25 +19,21 @@ import (
 	"meknik/hookevent"
 	"meknik/mixer"
 	"meknik/playback"
+	"meknik/statedir"
 	"meknik/synth"
 	"meknik/transport"
 )
 
 const (
-	appName          = "meknik"
 	socketName       = "meknik.sock"
 	lockName         = "meknik.lock"
-	controlName      = "meknik.ctl"
-	logName          = "meknik.log"
 	settingsName     = "mixer.json"
-	runDirName       = "run"
 	noSpawnFlag      = "--no-spawn"
 	idleEnv          = "MEKNIK_IDLE_TIMEOUT"
 	spawnTimeout     = time.Second
 	retryInterval    = 20 * time.Millisecond
 	limiterCeilingDB = -24.0
 	soundQueue       = 64
-	logMode          = 0o644
 	dirMode          = 0o755
 )
 
@@ -47,7 +43,7 @@ var (
 )
 
 func main() {
-	logFile, err := openLog()
+	logFile, err := statedir.OpenLog()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -83,7 +79,7 @@ func runHook(spawn func() error) error {
 	if err != nil || !ok {
 		return err
 	}
-	socket, err := runPath(socketName)
+	socket, err := statedir.RunPath(socketName)
 	if err != nil {
 		return err
 	}
@@ -95,7 +91,7 @@ func runControl(line string) error {
 	if err != nil {
 		return err
 	}
-	path, err := runPath(controlName)
+	path, err := statedir.RunPath(statedir.ControlSocket)
 	if err != nil {
 		return err
 	}
@@ -118,7 +114,7 @@ func spawnDaemon() error {
 	if err != nil {
 		return err
 	}
-	logFile, err := openLog()
+	logFile, err := statedir.OpenLog()
 	if err != nil {
 		return err
 	}
@@ -138,7 +134,7 @@ func daemonCommand(self string, logFile *os.File) *exec.Cmd {
 }
 
 func runDaemon() error {
-	lockPath, err := runPath(lockName)
+	lockPath, err := statedir.RunPath(lockName)
 	if err != nil {
 		return err
 	}
@@ -154,7 +150,7 @@ func runDaemon() error {
 	if err != nil {
 		return err
 	}
-	settingsPath, err := statePath(settingsName)
+	settingsPath, err := statedir.Path(settingsName)
 	if err != nil {
 		return err
 	}
@@ -162,11 +158,11 @@ func runDaemon() error {
 	if err != nil {
 		return err
 	}
-	socket, err := runPath(socketName)
+	socket, err := statedir.RunPath(socketName)
 	if err != nil {
 		return err
 	}
-	controlSocket, err := runPath(controlName)
+	controlSocket, err := statedir.RunPath(statedir.ControlSocket)
 	if err != nil {
 		return err
 	}
@@ -239,29 +235,3 @@ func parseIdle(timeout string) (time.Duration, error) {
 }
 
 func newRNG() *rand.Rand { return rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64())) }
-
-func runPath(name string) (string, error) { return statePath(filepath.Join(runDirName, name)) }
-
-func statePath(name string) (string, error) {
-	dir, err := stateDir()
-	return filepath.Join(dir, name), err
-}
-
-func openLog() (*os.File, error) {
-	path, err := statePath(logName)
-	if err != nil {
-		return nil, err
-	}
-	if err := os.MkdirAll(filepath.Dir(path), dirMode); err != nil {
-		return nil, err
-	}
-	return os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, logMode)
-}
-
-func stateDir() (string, error) {
-	if dir := os.Getenv("XDG_STATE_HOME"); dir != "" {
-		return filepath.Join(dir, appName), nil
-	}
-	home, err := os.UserHomeDir()
-	return filepath.Join(home, ".local", "state", appName), err
-}
