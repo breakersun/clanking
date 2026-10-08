@@ -9,11 +9,13 @@ import (
 )
 
 const (
-	block        = 256
-	sixteenth    = 6000
-	thirtySecond = 3000
-	bar          = 96000
-	queueLimit   = 4
+	block         = 256
+	sixteenth     = 6000
+	thirtySecond  = 3000
+	bar           = 96000
+	queueLimit    = 4
+	defaultTempo  = 120
+	slowSixteenth = 8000
 )
 
 func sound() mixer.Sound { return mixer.Sound{Cue: synth.Done} }
@@ -35,7 +37,7 @@ func starts(s *grid.Scheduler, frames int) []int {
 }
 
 func TestFirstSoundStartsAtFrameZero(t *testing.T) {
-	s := grid.New()
+	s := grid.New(defaultTempo)
 	offers(s, 1)
 	if got := s.Due(block); len(got) != 1 || got[0].Offset != 0 {
 		t.Errorf("Due = %+v, want one start at offset 0", got)
@@ -43,7 +45,7 @@ func TestFirstSoundStartsAtFrameZero(t *testing.T) {
 }
 
 func TestSecondSoundStartsOneSixteenthLater(t *testing.T) {
-	s := grid.New()
+	s := grid.New(defaultTempo)
 	offers(s, 2)
 	if got := starts(s, 2*sixteenth); len(got) != 2 || got[1] != sixteenth {
 		t.Errorf("starts = %v, want [0 %d]", got, sixteenth)
@@ -51,7 +53,7 @@ func TestSecondSoundStartsOneSixteenthLater(t *testing.T) {
 }
 
 func TestSoundBetweenLinesWaitsForNextLine(t *testing.T) {
-	s := grid.New()
+	s := grid.New(defaultTempo)
 	s.Due(block)
 	offers(s, 1)
 	if got := starts(s, sixteenth); len(got) != 1 || got[0] != sixteenth-block {
@@ -60,7 +62,7 @@ func TestSoundBetweenLinesWaitsForNextLine(t *testing.T) {
 }
 
 func TestFifthWaitingSoundIsDropped(t *testing.T) {
-	s := grid.New()
+	s := grid.New(defaultTempo)
 	offers(s, queueLimit)
 	if s.Offer(sound()) {
 		t.Error("Offer accepted a fifth waiting sound")
@@ -68,7 +70,7 @@ func TestFifthWaitingSoundIsDropped(t *testing.T) {
 }
 
 func TestAcceptanceResetsTheDropStreak(t *testing.T) {
-	s := grid.New()
+	s := grid.New(defaultTempo)
 	offers(s, queueLimit+2)
 	s.Due(block)
 	offers(s, 2)
@@ -78,7 +80,7 @@ func TestAcceptanceResetsTheDropStreak(t *testing.T) {
 }
 
 func TestThirdDropInARowSwitchesToThirtySeconds(t *testing.T) {
-	s := grid.New()
+	s := grid.New(defaultTempo)
 	offers(s, queueLimit+3)
 	if got := starts(s, 2*thirtySecond); len(got) < 2 || got[1] != thirtySecond {
 		t.Errorf("starts = %v, want [0 %d]", got, thirtySecond)
@@ -86,7 +88,7 @@ func TestThirdDropInARowSwitchesToThirtySeconds(t *testing.T) {
 }
 
 func TestQuietBarReturnsToSixteenths(t *testing.T) {
-	s := grid.New()
+	s := grid.New(defaultTempo)
 	offers(s, queueLimit+3)
 	starts(s, bar+queueLimit*thirtySecond)
 	offers(s, 2)
@@ -96,7 +98,7 @@ func TestQuietBarReturnsToSixteenths(t *testing.T) {
 }
 
 func TestSoundDueAfterTheBlockIsNotReturned(t *testing.T) {
-	s := grid.New()
+	s := grid.New(defaultTempo)
 	offers(s, 2)
 	s.Due(block)
 	if got := s.Due(block); len(got) != 0 {
@@ -105,13 +107,13 @@ func TestSoundDueAfterTheBlockIsNotReturned(t *testing.T) {
 }
 
 func TestNewSchedulerReportsEmptySixteenths(t *testing.T) {
-	if got, want := grid.New().State(), (grid.State{Division: 16}); got != want {
+	if got, want := grid.New(defaultTempo).State(), (grid.State{Division: 16}); got != want {
 		t.Errorf("State = %+v, want %+v", got, want)
 	}
 }
 
 func TestStateCountsQueuedSounds(t *testing.T) {
-	s := grid.New()
+	s := grid.New(defaultTempo)
 	offers(s, 3)
 	if got := s.State().Queued; got != 3 {
 		t.Errorf("Queued = %d, want 3", got)
@@ -119,7 +121,7 @@ func TestStateCountsQueuedSounds(t *testing.T) {
 }
 
 func TestStateCountsDroppedSounds(t *testing.T) {
-	s := grid.New()
+	s := grid.New(defaultTempo)
 	offers(s, queueLimit+2)
 	if got := s.State().Dropped; got != 2 {
 		t.Errorf("Dropped = %d, want 2", got)
@@ -127,7 +129,7 @@ func TestStateCountsDroppedSounds(t *testing.T) {
 }
 
 func TestStateReportsThirtySecondsAfterThirdDrop(t *testing.T) {
-	s := grid.New()
+	s := grid.New(defaultTempo)
 	offers(s, queueLimit+3)
 	if got := s.State().Division; got != 32 {
 		t.Errorf("Division = %d, want 32", got)
@@ -135,7 +137,33 @@ func TestStateReportsThirtySecondsAfterThirdDrop(t *testing.T) {
 }
 
 func TestStateString(t *testing.T) {
-	if got, want := (grid.State{Division: 32, Queued: 3, Dropped: 41}).String(), "120 bpm in 32nds, 3 queued, 41 dropped"; got != want {
+	if got, want := (grid.State{Division: 32, Queued: 3, Dropped: 41}).String(), "in 32nds, 3 queued, 41 dropped"; got != want {
 		t.Errorf("String = %q, want %q", got, want)
+	}
+}
+
+func TestSlowerTempoSpacesSixteenthsWider(t *testing.T) {
+	s := grid.New(90)
+	offers(s, 2)
+	if got := starts(s, 2*slowSixteenth); len(got) != 2 || got[1] != slowSixteenth {
+		t.Errorf("starts = %v, want [0 %d]", got, slowSixteenth)
+	}
+}
+
+func TestSetTempoChangesSpacing(t *testing.T) {
+	s := grid.New(defaultTempo)
+	s.SetTempo(90)
+	offers(s, 2)
+	if got := starts(s, 2*slowSixteenth); len(got) != 2 || got[1] != slowSixteenth {
+		t.Errorf("starts = %v, want [0 %d]", got, slowSixteenth)
+	}
+}
+
+func TestDueRefreshesQueuedCount(t *testing.T) {
+	s := grid.New(defaultTempo)
+	offers(s, 2)
+	s.Due(block)
+	if got := s.State().Queued; got != 1 {
+		t.Errorf("Queued = %d, want 1", got)
 	}
 }

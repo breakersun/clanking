@@ -183,7 +183,7 @@ func runDaemon() error {
 	if err != nil {
 		return errors.Join(err, conn.Close(), os.Remove(socket), listener.Close(), eventsListener.Close())
 	}
-	sched := grid.New()
+	sched := grid.New(settings.TempoBPM)
 	sounds := make(chan mixer.Sound, soundQueue)
 	gains := make(chan float64, soundQueue)
 	hub := events.NewHub()
