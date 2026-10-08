@@ -14,8 +14,6 @@ const (
 	tickHighHz = 2600.0
 )
 
-var allCues = []synth.Cue{synth.Tick, synth.Spawn, synth.Return, synth.Done, synth.Failed, synth.Permission, synth.Ask, synth.Reply, synth.Milestone, synth.Noted}
-
 func newRNG() *rand.Rand { return rand.New(rand.NewPCG(1, 2)) }
 
 func sound(t *testing.T, c synth.Cue) []float32 {
@@ -42,7 +40,7 @@ func TestCueDurations(t *testing.T) {
 }
 
 func TestCuesStartSilent(t *testing.T) {
-	for _, c := range allCues {
+	for _, c := range synth.Cues {
 		t.Run(string(c), func(t *testing.T) {
 			if got := sound(t, c)[0]; got != 0 {
 				t.Errorf("first sample = %v, want 0", got)
@@ -52,7 +50,7 @@ func TestCuesStartSilent(t *testing.T) {
 }
 
 func TestCuesEndSilent(t *testing.T) {
-	for _, c := range allCues {
+	for _, c := range synth.Cues {
 		t.Run(string(c), func(t *testing.T) {
 			samples := sound(t, c)
 			if got := samples[len(samples)-1]; got != 0 {
@@ -146,7 +144,7 @@ func TestCuesListsEveryCueEndingOnDone(t *testing.T) {
 }
 
 func TestEveryListedCueHasASound(t *testing.T) {
-	rng := rand.New(rand.NewPCG(1, 2))
+	rng := newRNG()
 	for _, c := range synth.Cues {
 		t.Run(string(c), func(t *testing.T) {
 			if _, ok := synth.Sound(c, rng); !ok {

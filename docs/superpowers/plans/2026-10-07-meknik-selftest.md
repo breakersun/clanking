@@ -49,20 +49,20 @@
 - Modify: `synth/cue.go`, `synth/cue_test.go`
 
 **Interfaces:**
-- Produces: `var synth.Cues = []synth.Cue{Tick, Spawn, Return, Done, Failed, Permission, Ask, Reply, Milestone, Noted}`
+- Produces: `var synth.Cues = []synth.Cue{Tick, Spawn, Return, Failed, Permission, Ask, Reply, Milestone, Noted, Done}`
 
 - [ ] **Step 1: Write the failing tests** (append to `synth/cue_test.go`; add `"slices"` to its imports)
 
 ```go
-func TestCuesListsEveryCueInOrder(t *testing.T) {
-	want := []synth.Cue{synth.Tick, synth.Spawn, synth.Return, synth.Done, synth.Failed, synth.Permission, synth.Ask, synth.Reply, synth.Milestone, synth.Noted}
+func TestCuesListsEveryCueEndingOnDone(t *testing.T) {
+	want := []synth.Cue{synth.Tick, synth.Spawn, synth.Return, synth.Failed, synth.Permission, synth.Ask, synth.Reply, synth.Milestone, synth.Noted, synth.Done}
 	if !slices.Equal(synth.Cues, want) {
 		t.Errorf("Cues = %v, want %v", synth.Cues, want)
 	}
 }
 
 func TestEveryListedCueHasASound(t *testing.T) {
-	rng := rand.New(rand.NewPCG(1, 2))
+	rng := newRNG()
 	for _, c := range synth.Cues {
 		t.Run(string(c), func(t *testing.T) {
 			if _, ok := synth.Sound(c, rng); !ok {
@@ -81,8 +81,8 @@ Expected: FAIL — undefined `synth.Cues`.
 - [ ] **Step 3: Implement** (in `synth/cue.go`, after the `Cue` constants)
 
 ```go
-// Cues lists every cue in self-test order.
-var Cues = []Cue{Tick, Spawn, Return, Done, Failed, Permission, Ask, Reply, Milestone, Noted}
+// Cues lists every cue in self-test order, ending on Done.
+var Cues = []Cue{Tick, Spawn, Return, Failed, Permission, Ask, Reply, Milestone, Noted, Done}
 ```
 
 - [ ] **Step 4: Run tests to verify they pass** — `make test`, all `ok`.
@@ -166,7 +166,7 @@ func TestRunSendsCuesInOrder(t *testing.T) {
 func TestRunWaitsForEachCueAndAPause(t *testing.T) {
 	var waits []time.Duration
 	_ = selftest.Run(unmuted, record(new([]synth.Cue)), func(d time.Duration) { waits = append(waits, d) })
-	samples, _ := synth.Sound(synth.Noted, rand.New(rand.NewPCG(1, 2)))
+	samples, _ := synth.Sound(synth.Cues[len(synth.Cues)-1], rand.New(rand.NewPCG(1, 2)))
 	if want := time.Duration(len(samples))*time.Second/synth.SampleRate + cuePause; waits[len(waits)-1] != want {
 		t.Errorf("last wait = %v, want %v", waits[len(waits)-1], want)
 	}
