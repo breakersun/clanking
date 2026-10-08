@@ -1,12 +1,22 @@
-.PHONY: test lint install
+IMAGE = localhost/meknik-build
+BIN = $(HOME)/.local/share/meknik/bin
+IN_IMAGE = podman run --rm -v $(CURDIR):/src:Z -v meknik-gomod:/root/go/pkg/mod -v meknik-gocache:/root/.cache $(IMAGE)
 
-test:
-	go test ./...
+.PHONY: image test lint build install
 
-lint:
-	golangci-lint run ./...
+image:
+	podman build -t $(IMAGE) .
 
-install:
-	GOBIN=$(HOME)/.local/share/meknik/bin go install -buildvcs=false ./cmd/meknik
-	ln -sf $(HOME)/.local/share/meknik/bin/meknik $(HOME)/.local/bin/meknik
-	install -D -m 755 $(HOME)/.local/share/meknik/bin/meknik $(HOME)/.local/share/meknik/container-bin/meknik
+test: image
+	$(IN_IMAGE) go test ./...
+
+lint: image
+	$(IN_IMAGE) golangci-lint run ./...
+
+build: image
+	$(IN_IMAGE) env CGO_ENABLED=0 go build -buildvcs=false -o bin/meknik ./cmd/meknik
+
+install: build
+	install -D -m 755 -t $(BIN) bin/meknik
+	ln -sf $(BIN)/meknik $(HOME)/.local/bin/meknik
+	install -D -m 755 bin/meknik $(HOME)/.local/share/meknik/container-bin/meknik
