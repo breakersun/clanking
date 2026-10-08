@@ -89,7 +89,7 @@ func playUsage() string {
 }
 
 func runHook(spawn func() error) error {
-	cue, ok, err := hookevent.Parse(os.Stdin)
+	ev, ok, err := hookevent.Parse(os.Stdin)
 	if err != nil || !ok {
 		return err
 	}
@@ -97,7 +97,7 @@ func runHook(spawn func() error) error {
 	if err != nil {
 		return err
 	}
-	return transport.Deliver(func() error { return transport.Send(socket, cue) }, spawn, transport.SpawnTimeout, transport.RetryInterval)
+	return transport.Deliver(func() error { return transport.Send(socket, ev.Cue, ev.Cwd) }, spawn, transport.SpawnTimeout, transport.RetryInterval)
 }
 
 func runControl(line string) error {
@@ -216,15 +216,15 @@ func runDaemon() error {
 	return errors.Join(playErr, conn.Close(), os.Remove(socket), listener.Close(), eventsListener.Close(), stream.Close())
 }
 
-func enqueue(sounds chan<- mixer.Sound, rng *rand.Rand) func(synth.Cue) {
-	return func(c synth.Cue) {
+func enqueue(sounds chan<- mixer.Sound, rng *rand.Rand) func(synth.Cue, string) {
+	return func(c synth.Cue, cwd string) {
 		samples, ok := synth.Sound(c, rng)
 		if !ok {
 			slog.Warn("unknown cue", "cue", c)
 			return
 		}
 		select {
-		case sounds <- mixer.Sound{Samples: samples, Cue: c}:
+		case sounds <- mixer.Sound{Samples: samples, Cue: c, Pan: pan.Of(cwd)}:
 		default:
 			slog.Warn("sound queue full, cue dropped", "cue", c)
 		}

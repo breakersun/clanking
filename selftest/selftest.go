@@ -51,5 +51,5 @@ func RunDaemon(spawn func() error) error {
 		s, _, err := transport.Control(controlPath, control.Request{Command: control.Status}, spawn)
 		return s, err
 	}
-	return Run(status, func(c synth.Cue) error { return transport.Send(cuePath, c) }, time.Sleep)
+	return Run(status, func(c synth.Cue) error { return transport.Send(cuePath, c, "") }, time.Sleep)
 }

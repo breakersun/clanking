@@ -10,6 +10,7 @@ import (
 	"meknik/control"
 	"meknik/daemon"
 	"meknik/mixer"
+	"meknik/pan"
 	"meknik/synth"
 )
 
@@ -36,7 +37,7 @@ func TestLimiterCeilingSitsSixDecibelsAboveCues(t *testing.T) {
 func TestEnqueueDropsWhenQueueIsFull(t *testing.T) {
 	returned := make(chan struct{})
 	go func() {
-		enqueue(make(chan mixer.Sound), newRNG())(synth.Done)
+		enqueue(make(chan mixer.Sound), newRNG())(synth.Done, "")
 		close(returned)
 	}()
 	select {
@@ -113,5 +114,13 @@ func TestRunRejectsOutOfRangeTempoBeforeContactingDaemon(t *testing.T) {
 func TestUsageListsTempo(t *testing.T) {
 	if !strings.Contains(errUsage.Error(), "| tempo <bpm>") {
 		t.Errorf("usage = %q, want it to list tempo", errUsage)
+	}
+}
+
+func TestEnqueuePansByCwd(t *testing.T) {
+	sounds := make(chan mixer.Sound, 1)
+	enqueue(sounds, newRNG())(synth.Done, "/home/rc/meknik")
+	if got := (<-sounds).Pan; got != pan.Of("/home/rc/meknik") {
+		t.Errorf("Pan = %v, want %v", got, pan.Of("/home/rc/meknik"))
 	}
 }

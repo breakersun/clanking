@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -23,44 +24,49 @@ var errSpawn = errors.New("spawn failed")
 
 func socketPath(t *testing.T) string { return filepath.Join(t.TempDir(), socketName) }
 
-func serve(t *testing.T, path string) <-chan synth.Cue {
+type delivery struct {
+	cue synth.Cue
+	cwd string
+}
+
+func serve(t *testing.T, path string) <-chan delivery {
 	t.Helper()
 	conn, err := transport.Listen(path)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = conn.Close() })
-	cues := make(chan synth.Cue, 1)
-	go func() { _ = transport.Serve(conn, func(c synth.Cue) { cues <- c }) }()
-	return cues
+	got := make(chan delivery, 1)
+	go func() { _ = transport.Serve(conn, func(c synth.Cue, cwd string) { got <- delivery{c, cwd} }) }()
+	return got
 }
 
-func receive(cues <-chan synth.Cue) synth.Cue {
+func receive(got <-chan delivery) delivery {
 	select {
-	case c := <-cues:
-		return c
+	case d := <-got:
+		return d
 	case <-time.After(receiveWait):
-		return ""
+		return delivery{}
 	}
 }
 
 func noSpawn() error { return nil }
 
 func sendCue(path string, c synth.Cue) func() error {
-	return func() error { return transport.Send(path, c) }
+	return func() error { return transport.Send(path, c, "") }
 }
 
 func TestSendReachesServer(t *testing.T) {
 	path := socketPath(t)
 	cues := serve(t, path)
-	_ = transport.Send(path, synth.Done)
-	if got := receive(cues); got != synth.Done {
+	_ = transport.Send(path, synth.Done, "")
+	if got := receive(cues).cue; got != synth.Done {
 		t.Errorf("received %q, want %q", got, synth.Done)
 	}
 }
 
 func TestSendWithoutDaemonFails(t *testing.T) {
-	if err := transport.Send(socketPath(t), synth.Done); err == nil {
+	if err := transport.Send(socketPath(t), synth.Done, ""); err == nil {
 		t.Error("Send error = nil, want an error")
 	}
 }
@@ -69,8 +75,8 @@ func TestListenReplacesStaleSocket(t *testing.T) {
 	path := socketPath(t)
 	_ = os.WriteFile(path, nil, 0o600)
 	cues := serve(t, path)
-	_ = transport.Send(path, synth.Tick)
-	if got := receive(cues); got != synth.Tick {
+	_ = transport.Send(path, synth.Tick, "")
+	if got := receive(cues).cue; got != synth.Tick {
 		t.Errorf("received %q, want %q", got, synth.Tick)
 	}
 }
@@ -78,7 +84,7 @@ func TestListenReplacesStaleSocket(t *testing.T) {
 func TestServeReturnsNilWhenClosed(t *testing.T) {
 	conn, _ := transport.Listen(socketPath(t))
 	_ = conn.Close()
-	if err := transport.Serve(conn, func(synth.Cue) {}); err != nil {
+	if err := transport.Serve(conn, func(synth.Cue, string) {}); err != nil {
 		t.Errorf("Serve error = %v, want nil", err)
 	}
 }
@@ -95,9 +101,9 @@ func TestDeliverSkipsSpawnWhenDaemonRuns(t *testing.T) {
 
 func TestDeliverSpawnsDaemonAndSends(t *testing.T) {
 	path := socketPath(t)
-	var cues <-chan synth.Cue
+	var cues <-chan delivery
 	_ = transport.Deliver(sendCue(path, synth.Done), func() error { cues = serve(t, path); return nil }, shortTimeout, retryInterval)
-	if got := receive(cues); got != synth.Done {
+	if got := receive(cues).cue; got != synth.Done {
 		t.Errorf("received %q, want %q", got, synth.Done)
 	}
 }
@@ -126,7 +132,7 @@ func TestSendGivesUpWhenDaemonStopsReading(t *testing.T) {
 	go func() {
 		var err error
 		for err == nil {
-			err = transport.Send(path, synth.Tick)
+			err = transport.Send(path, synth.Tick, "")
 		}
 		close(failed)
 	}()
@@ -134,5 +140,38 @@ func TestSendGivesUpWhenDaemonStopsReading(t *testing.T) {
 	case <-failed:
 	case <-time.After(stallWait):
 		t.Error("Send still blocked after the daemon stopped reading")
+	}
+}
+
+const (
+	spacedCwd      = "/home/rc/My Projects/meknik"
+	longPathLength = 4000
+)
+
+func TestSendCarriesCwdWithSpaces(t *testing.T) {
+	path := socketPath(t)
+	got := serve(t, path)
+	_ = transport.Send(path, synth.Done, spacedCwd)
+	if d := receive(got); d.cwd != spacedCwd {
+		t.Errorf("cwd = %q, want %q", d.cwd, spacedCwd)
+	}
+}
+
+func TestSendCarriesCueBesideCwd(t *testing.T) {
+	path := socketPath(t)
+	got := serve(t, path)
+	_ = transport.Send(path, synth.Done, spacedCwd)
+	if d := receive(got); d.cue != synth.Done {
+		t.Errorf("cue = %q, want %q", d.cue, synth.Done)
+	}
+}
+
+func TestSendCarriesLongCwd(t *testing.T) {
+	path := socketPath(t)
+	got := serve(t, path)
+	long := "/" + strings.Repeat("d", longPathLength)
+	_ = transport.Send(path, synth.Tick, long)
+	if d := receive(got); d.cwd != long {
+		t.Errorf("cwd length = %d, want %d", len(d.cwd), len(long))
 	}
 }

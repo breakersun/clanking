@@ -1,4 +1,4 @@
-// Package transport carries cue names from hook clients to the daemon over a Unix datagram socket.
+// Package transport carries cue names and working directories from hook clients to the daemon over a Unix datagram socket.
 package transport
 
 import (
@@ -6,15 +6,17 @@ import (
 	"io/fs"
 	"net"
 	"os"
+	"strings"
 	"time"
 
 	"meknik/synth"
 )
 
 const (
-	network     = "unixgram"
-	maxDatagram = 64
-	sendTimeout = 100 * time.Millisecond
+	network        = "unixgram"
+	maxDatagram    = 8192
+	fieldSeparator = " "
+	sendTimeout    = 100 * time.Millisecond
 )
 
 // Listen binds the daemon's cue socket, replacing any stale socket file.
@@ -32,8 +34,8 @@ func removeStale(path string) error {
 	return nil
 }
 
-// Serve hands each received cue to play until the connection is closed.
-func Serve(conn *net.UnixConn, play func(synth.Cue)) error {
+// Serve hands each received cue and working directory to play until the connection is closed.
+func Serve(conn *net.UnixConn, play func(synth.Cue, string)) error {
 	buf := make([]byte, maxDatagram)
 	for {
 		n, err := conn.Read(buf)
@@ -43,12 +45,13 @@ func Serve(conn *net.UnixConn, play func(synth.Cue)) error {
 		if err != nil {
 			return err
 		}
-		play(synth.Cue(buf[:n]))
+		cue, cwd, _ := strings.Cut(string(buf[:n]), fieldSeparator)
+		play(synth.Cue(cue), cwd)
 	}
 }
 
-// Send delivers one cue to the daemon socket.
-func Send(path string, c synth.Cue) error {
+// Send delivers one cue and the sender's working directory to the daemon socket.
+func Send(path string, c synth.Cue, cwd string) error {
 	conn, err := net.Dial(network, path)
 	if err != nil {
 		return err
@@ -56,7 +59,7 @@ func Send(path string, c synth.Cue) error {
 	if err := conn.SetWriteDeadline(time.Now().Add(sendTimeout)); err != nil {
 		return errors.Join(err, conn.Close())
 	}
-	_, err = conn.Write([]byte(c))
+	_, err = conn.Write([]byte(string(c) + fieldSeparator + cwd))
 	return errors.Join(err, conn.Close())
 }
 
