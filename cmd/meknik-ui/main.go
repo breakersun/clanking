@@ -15,25 +15,28 @@ import (
 
 	"meknik/control"
 	"meknik/daemon"
+	"meknik/events"
 	"meknik/selftest"
 	"meknik/statedir"
 	"meknik/transport"
 )
 
 const (
-	appID          = "tel.lil.meknik"
-	title          = "meknik"
-	daemonBinary   = "meknik"
-	muteLabel      = "Mute"
-	selfTestLabel  = "Self-test"
-	minVolumeDB    = -60.0
-	volumeStepDB   = 0.5
-	volumeDigits   = 1
-	volumeDebounce = 100 * time.Millisecond
-	zeroDetentDB   = 1.0
-	zeroMark       = "0"
-	spacing        = 6
-	requestQueue   = 16
+	appID             = "tel.lil.meknik"
+	title             = "meknik"
+	daemonBinary      = "meknik"
+	muteLabel         = "Mute"
+	selfTestLabel     = "Self-test"
+	minVolumeDB       = -60.0
+	volumeStepDB      = 0.5
+	volumeDigits      = 1
+	volumeDebounce    = 100 * time.Millisecond
+	zeroDetentDB      = 1.0
+	zeroMark          = "0"
+	spacing           = 6
+	requestQueue      = 16
+	windowMargin      = 12
+	reconnectInterval = time.Second
 )
 
 type panel struct {
@@ -45,6 +48,7 @@ type panel struct {
 	test     func() error
 	pending  glib.SourceHandle
 	syncing  bool
+	lamps    *lamps
 }
 
 func main() {
@@ -54,9 +58,16 @@ func main() {
 		os.Exit(1)
 	}
 	slog.SetDefault(slog.New(slog.NewTextHandler(logFile, nil)))
+	eventsPath, err := statedir.RunPath(statedir.EventsSocket)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 	app := gtk.NewApplication(appID, gio.ApplicationDefaultFlags)
 	app.ConnectActivate(func() {
-		newPanel(app, askDaemon, func() error { return selftest.RunDaemon(spawnSibling) }).send(control.Request{Command: control.Status})
+		p := newPanel(app, askDaemon, func() error { return selftest.RunDaemon(spawnSibling) })
+		go p.watch(eventsPath)
+		p.send(control.Request{Command: control.Status})
 	})
 	os.Exit(app.Run(os.Args))
 }
@@ -85,6 +96,7 @@ func newPanel(app *gtk.Application, ask func(control.Request) (control.Settings,
 		selfTest: gtk.NewButtonWithLabel(selfTestLabel),
 		requests: make(chan control.Request, requestQueue),
 		test:     test,
+		lamps:    newLamps(),
 	}
 	go forward(p.requests, ask, func(s control.Settings, err error) { glib.IdleAdd(func() { p.show(s, err) }) })
 	p.volume.SetDrawValue(true)
@@ -96,6 +108,11 @@ func newPanel(app *gtk.Application, ask func(control.Request) (control.Settings,
 	p.mute.ConnectToggled(p.muteToggled)
 	p.selfTest.ConnectClicked(p.runSelfTest)
 	box := gtk.NewBox(gtk.OrientationVertical, spacing)
+	box.SetMarginTop(windowMargin)
+	box.SetMarginBottom(windowMargin)
+	box.SetMarginStart(windowMargin)
+	box.SetMarginEnd(windowMargin)
+	box.Append(p.lamps.row)
 	box.Append(p.volume)
 	box.Append(p.mute)
 	box.Append(p.selfTest)
@@ -183,4 +200,18 @@ func (p *panel) show(settings control.Settings, err error) {
 	p.volume.SetValue(settings.VolumeDB)
 	p.mute.SetActive(settings.Muted)
 	p.syncing = false
+}
+
+func (p *panel) watch(path string) {
+	for {
+		err := transport.Watch(path, func(line string) { glib.IdleAdd(func() { p.event(line) }) })
+		slog.Warn("events stream ended", "err", err)
+		time.Sleep(reconnectInterval)
+	}
+}
+
+func (p *panel) event(line string) {
+	if err := events.Dispatch(line, p.lamps.light, func(s control.Settings) { p.show(s, nil) }); err != nil {
+		slog.Warn("unreadable event", "line", line, "err", err)
+	}
 }
