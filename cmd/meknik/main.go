@@ -34,6 +34,7 @@ const (
 	limiterCeilingDB = -24.0
 	soundQueue       = 64
 	dirMode          = 0o755
+	statusJoin       = ", "
 )
 
 var (
@@ -107,12 +108,16 @@ func runControl(line string) error {
 	if err != nil {
 		return err
 	}
-	settings, err := transport.Control(path, r, spawnDaemon)
+	settings, gridState, err := transport.Control(path, r, spawnDaemon)
 	if err != nil {
 		return err
 	}
-	_, err = fmt.Println(settings)
+	_, err = fmt.Println(statusLine(settings, gridState))
 	return err
+}
+
+func statusLine(s control.Settings, gridState string) string {
+	return s.String() + statusJoin + gridState
 }
 
 func refuseSpawn() error { return errSpawnDisabled }
@@ -178,6 +183,7 @@ func runDaemon() error {
 	if err != nil {
 		return errors.Join(err, conn.Close(), os.Remove(socket), listener.Close(), eventsListener.Close())
 	}
+	sched := grid.New()
 	sounds := make(chan mixer.Sound, soundQueue)
 	gains := make(chan float64, soundQueue)
 	hub := events.NewHub()
@@ -190,7 +196,7 @@ func runDaemon() error {
 		}
 	}()
 	go func() {
-		if err := transport.ServeControl(listener, controller.Handle); err != nil {
+		if err := transport.ServeControl(listener, controller.Handle, func() string { return sched.State().String() }); err != nil {
 			slog.Error("control socket failed", "err", err)
 		}
 	}()
@@ -204,7 +210,7 @@ func runDaemon() error {
 		}
 	}()
 	slog.Info("daemon started", "socket", socket, "settings", settings.String(), "idle", idle)
-	playErr := daemon.Play(mixer.New(settings.Gain(), synth.Amplitude(limiterCeilingDB)), grid.New(), sounds, gains, stream, idle, time.Now, announce(hub.Publish))
+	playErr := daemon.Play(mixer.New(settings.Gain(), synth.Amplitude(limiterCeilingDB)), sched, sounds, gains, stream, idle, time.Now, announce(hub.Publish))
 	slog.Info("daemon stopping")
 	return errors.Join(playErr, conn.Close(), os.Remove(socket), listener.Close(), eventsListener.Close(), stream.Close())
 }

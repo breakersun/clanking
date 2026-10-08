@@ -96,3 +96,10 @@ func TestAnnouncePublishesStartedCue(t *testing.T) {
 		t.Errorf("published = %q, want %q", published, want)
 	}
 }
+
+func TestStatusLineJoinsSettingsAndGrid(t *testing.T) {
+	got := statusLine(control.Settings{VolumeDB: -6, Muted: true}, "120 bpm in 32nds, 3 queued, 41 dropped")
+	if want := "volume -6 dB, muted, 120 bpm in 32nds, 3 queued, 41 dropped"; got != want {
+		t.Errorf("statusLine = %q, want %q", got, want)
+	}
+}

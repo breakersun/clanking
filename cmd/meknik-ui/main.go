@@ -75,7 +75,8 @@ func askDaemon(r control.Request) (control.Settings, error) {
 	if err != nil {
 		return control.Settings{}, err
 	}
-	return transport.Control(path, r, spawnSibling)
+	s, _, err := transport.Control(path, r, spawnSibling)
+	return s, err
 }
 
 func spawnSibling() error {

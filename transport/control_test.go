@@ -9,7 +9,10 @@ import (
 	"meknik/transport"
 )
 
-const controlName = "meknik.ctl"
+const (
+	controlName = "meknik.ctl"
+	gridState   = "120 bpm in 16ths, 0 queued, 0 dropped"
+)
 
 var errSave = errors.New("save failed")
 
@@ -22,7 +25,7 @@ func serveControl(t *testing.T, path string, handle func(control.Request) (contr
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = l.Close() })
-	go func() { _ = transport.ServeControl(l, handle) }()
+	go func() { _ = transport.ServeControl(l, handle, func() string { return gridState }) }()
 }
 
 func TestAskReturnsDaemonStatus(t *testing.T) {
@@ -31,7 +34,7 @@ func TestAskReturnsDaemonStatus(t *testing.T) {
 		return control.Settings{}.Apply(r), nil
 	})
 	got, _ := transport.Ask(path, control.Request{Command: control.Volume, VolumeDB: -6})
-	if want := "volume -6 dB, unmuted"; got != want {
+	if want := "volume -6 dB, unmuted; " + gridState; got != want {
 		t.Errorf("Ask = %q, want %q", got, want)
 	}
 }
@@ -53,7 +56,7 @@ func TestAskWithoutDaemonFails(t *testing.T) {
 func TestServeControlReturnsNilWhenClosed(t *testing.T) {
 	l, _ := transport.ListenStream(controlPath(t))
 	_ = l.Close()
-	if err := transport.ServeControl(l, nil); err != nil {
+	if err := transport.ServeControl(l, nil, nil); err != nil {
 		t.Errorf("ServeControl error = %v, want nil", err)
 	}
 }
@@ -61,7 +64,7 @@ func TestServeControlReturnsNilWhenClosed(t *testing.T) {
 func TestControlReturnsDaemonSettings(t *testing.T) {
 	path := controlPath(t)
 	serveControl(t, path, func(r control.Request) (control.Settings, error) { return control.Settings{}.Apply(r), nil })
-	got, _ := transport.Control(path, control.Request{Command: control.Mute}, func() error { return nil })
+	got, _, _ := transport.Control(path, control.Request{Command: control.Mute}, func() error { return nil })
 	if want := (control.Settings{Muted: true}); got != want {
 		t.Errorf("Control = %+v, want %+v", got, want)
 	}
@@ -73,7 +76,7 @@ func TestControlSpawnsDaemonWhenNoneAnswers(t *testing.T) {
 		serveControl(t, path, func(r control.Request) (control.Settings, error) { return control.Settings{}.Apply(r), nil })
 		return nil
 	}
-	got, _ := transport.Control(path, control.Request{Command: control.Volume, VolumeDB: -9}, spawn)
+	got, _, _ := transport.Control(path, control.Request{Command: control.Volume, VolumeDB: -9}, spawn)
 	if want := (control.Settings{VolumeDB: -9}); got != want {
 		t.Errorf("Control = %+v, want %+v", got, want)
 	}
@@ -82,7 +85,15 @@ func TestControlSpawnsDaemonWhenNoneAnswers(t *testing.T) {
 func TestControlReportsDaemonError(t *testing.T) {
 	path := controlPath(t)
 	serveControl(t, path, func(control.Request) (control.Settings, error) { return control.Settings{}, errSave })
-	if _, err := transport.Control(path, control.Request{Command: control.Mute}, func() error { return nil }); !errors.Is(err, transport.ErrDaemon) {
+	if _, _, err := transport.Control(path, control.Request{Command: control.Mute}, func() error { return nil }); !errors.Is(err, transport.ErrDaemon) {
 		t.Errorf("Control error = %v, want %v", err, transport.ErrDaemon)
+	}
+}
+
+func TestControlReturnsGridState(t *testing.T) {
+	path := controlPath(t)
+	serveControl(t, path, func(r control.Request) (control.Settings, error) { return control.Settings{}.Apply(r), nil })
+	if _, got, _ := transport.Control(path, control.Request{Command: control.Status}, func() error { return nil }); got != gridState {
+		t.Errorf("grid = %q, want %q", got, gridState)
 	}
 }

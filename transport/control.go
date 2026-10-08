@@ -14,9 +14,10 @@ import (
 )
 
 const (
-	streamNetwork  = "unix"
-	controlTimeout = time.Second
-	errorPrefix    = "error: "
+	streamNetwork   = "unix"
+	controlTimeout  = time.Second
+	errorPrefix     = "error: "
+	statusSeparator = "; "
 )
 
 const (
@@ -38,7 +39,7 @@ func ListenStream(path string) (net.Listener, error) {
 }
 
 // ServeControl answers each connection's request line with a status line until the listener is closed.
-func ServeControl(l net.Listener, handle func(control.Request) (control.Settings, error)) error {
+func ServeControl(l net.Listener, handle func(control.Request) (control.Settings, error), describe func() string) error {
 	for {
 		conn, err := l.Accept()
 		if errors.Is(err, net.ErrClosed) {
@@ -47,27 +48,27 @@ func ServeControl(l net.Listener, handle func(control.Request) (control.Settings
 		if err != nil {
 			return err
 		}
-		go answer(conn, handle)
+		go answer(conn, handle, describe)
 	}
 }
 
-func answer(conn net.Conn, handle func(control.Request) (control.Settings, error)) {
-	err := errors.Join(conn.SetDeadline(time.Now().Add(controlTimeout)), reply(conn, handle), conn.Close())
+func answer(conn net.Conn, handle func(control.Request) (control.Settings, error), describe func() string) {
+	err := errors.Join(conn.SetDeadline(time.Now().Add(controlTimeout)), reply(conn, handle, describe), conn.Close())
 	if err != nil {
 		slog.Warn("control connection failed", "err", err)
 	}
 }
 
-func reply(conn net.Conn, handle func(control.Request) (control.Settings, error)) error {
+func reply(conn net.Conn, handle func(control.Request) (control.Settings, error), describe func() string) error {
 	line, err := bufio.NewReader(conn).ReadString('\n')
 	if err != nil {
 		return err
 	}
-	_, err = io.WriteString(conn, respond(line, handle)+"\n")
+	_, err = io.WriteString(conn, respond(line, handle, describe)+"\n")
 	return err
 }
 
-func respond(line string, handle func(control.Request) (control.Settings, error)) string {
+func respond(line string, handle func(control.Request) (control.Settings, error), describe func() string) string {
 	r, err := control.Parse(line)
 	if err != nil {
 		return errorPrefix + err.Error()
@@ -76,7 +77,7 @@ func respond(line string, handle func(control.Request) (control.Settings, error)
 	if err != nil {
 		return errorPrefix + err.Error()
 	}
-	return s.String()
+	return s.String() + statusSeparator + describe()
 }
 
 // Ask sends one request to the daemon and returns its status line.
@@ -107,15 +108,17 @@ func exchange(conn net.Conn, r control.Request) (string, error) {
 	return status, nil
 }
 
-// Control sends a request, starting a daemon with spawn when none answers, and returns the resulting settings.
-func Control(path string, r control.Request, spawn func() error) (control.Settings, error) {
+// Control sends a request, starting a daemon with spawn when none answers, and returns the resulting settings and grid state.
+func Control(path string, r control.Request, spawn func() error) (control.Settings, string, error) {
 	var status string
 	ask := func() (err error) {
 		status, err = Ask(path, r)
 		return err
 	}
 	if err := Deliver(ask, spawn, SpawnTimeout, RetryInterval); err != nil {
-		return control.Settings{}, err
+		return control.Settings{}, "", err
 	}
-	return control.ParseSettings(status)
+	settingsPart, gridState, _ := strings.Cut(status, statusSeparator)
+	s, err := control.ParseSettings(settingsPart)
+	return s, gridState, err
 }
