@@ -1,6 +1,7 @@
 package synth_test
 
 import (
+	"math"
 	"math/rand/v2"
 	"slices"
 	"testing"
@@ -10,9 +11,11 @@ import (
 )
 
 const (
-	tickLowHz  = 1800.0
-	tickHighHz = 2600.0
+	tickDraws         = 200
+	semitoneTolerance = 0.25
 )
+
+var pentatonicTicks = []float64{19, 21, 24, 26, 28}
 
 func newRNG() *rand.Rand { return rand.New(rand.NewPCG(1, 2)) }
 
@@ -87,9 +90,36 @@ func TestTickStaysUnderJitteredLevel(t *testing.T) {
 	}
 }
 
-func TestTickPitchInRange(t *testing.T) {
-	if got := pitchHz(sound(t, synth.Tick)); got < tickLowHz*(1-pitchTolerance) || got > tickHighHz*(1+pitchTolerance) {
-		t.Errorf("pitch = %v, want within [%v, %v]", got, tickLowHz, tickHighHz)
+func tickSemitones(rng *rand.Rand) float64 {
+	samples, _ := synth.Sound(synth.Tick, rng)
+	return synth.Semitones(pitchHz(samples))
+}
+
+func onScale(semitones float64) bool {
+	return slices.ContainsFunc(pentatonicTicks, func(n float64) bool { return math.Abs(semitones-n) < semitoneTolerance })
+}
+
+func TestTicksLandOnThePentatonicScale(t *testing.T) {
+	rng := newRNG()
+	var off []float64
+	for range tickDraws {
+		if st := tickSemitones(rng); !onScale(st) {
+			off = append(off, st)
+		}
+	}
+	if len(off) != 0 {
+		t.Errorf("off-scale ticks (semitones above tonic) = %v", off)
+	}
+}
+
+func TestTicksUseEveryPentatonicNote(t *testing.T) {
+	rng := newRNG()
+	heard := map[float64]bool{}
+	for range tickDraws {
+		heard[math.Round(tickSemitones(rng))] = true
+	}
+	if len(heard) != len(pentatonicTicks) {
+		t.Errorf("distinct tick notes = %v, want %v", heard, pentatonicTicks)
 	}
 }
 

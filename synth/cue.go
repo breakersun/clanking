@@ -22,6 +22,9 @@ const (
 	Noted      Cue = "noted"
 )
 
+// tickNotes are the D major pentatonic notes A6 to F#7, in semitones above the tonic.
+var tickNotes = []float64{19, 21, 24, 26, 28}
+
 // Cues lists every cue in self-test order, ending on Done.
 var Cues = []Cue{Tick, Spawn, Return, Failed, Permission, Ask, Reply, Milestone, Noted, Done}
 
@@ -34,8 +37,6 @@ const (
 )
 
 const (
-	tickLowHz  = 1800.0
-	tickHighHz = 2600.0
 	tickLength = 12 * time.Millisecond
 	tickDecay  = 3 * time.Millisecond
 	sustain    = time.Hour
@@ -86,7 +87,7 @@ func Sound(c Cue, rng *rand.Rand) ([]float32, bool) {
 }
 
 func tick(rng *rand.Rand) []float32 {
-	pitch := Semitones(tickLowHz + rng.Float64()*(tickHighHz-tickLowHz))
+	pitch := tickNotes[rng.IntN(len(tickNotes))]
 	jitter := (2*rng.Float64() - 1) * TickJitterDB
 	return Render([]Note{{From: pitch, To: pitch, Length: tickLength, Decay: tickDecay, Timbre: Sine}}, TickPeakDB+jitter)
 }

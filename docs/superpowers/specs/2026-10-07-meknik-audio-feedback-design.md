@@ -121,7 +121,7 @@ otherwise, the waveform is a sine.
 
 | Cue | Character | Definition |
 | --- | --- | --- |
-| `tick` | a disk seek; bursts patter | one sine burst, 12 ms, exponential decay, frequency random in 1800–2600 Hz, level random within ±3 dB |
+| `tick` | a disk seek; bursts patter | one sine burst, 12 ms, exponential decay, pitch a random note of the D major pentatonic scale from A6 to F♯7 (1760–2960 Hz), level random within ±3 dB |
 | `spawn` | small bloop up | +12 then +19, 40 ms each |
 | `return` | the mirror image | +19 then +12, 40 ms each |
 | `done` | settled, resolved | +7, +4, 0, 90 ms apart, each ringing about 200 ms |
