@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -35,7 +36,7 @@ func TestLimiterCeilingSitsSixDecibelsAboveCues(t *testing.T) {
 func TestEnqueueDropsWhenQueueIsFull(t *testing.T) {
 	returned := make(chan struct{})
 	go func() {
-		enqueue(make(chan mixer.Sound), newRNG())(synth.Done)
+		enqueue(make(chan mixer.Sound), newRNG(), func(string) {})(synth.Done)
 		close(returned)
 	}()
 	select {
@@ -85,5 +86,21 @@ func TestPlayUsageListsEveryCue(t *testing.T) {
 	want := "usage: meknik play <cue>\ncues: tick spawn return failed permission ask reply milestone noted done"
 	if got := playUsage(); got != want {
 		t.Errorf("playUsage = %q, want %q", got, want)
+	}
+}
+
+func TestEnqueuePublishesAcceptedCue(t *testing.T) {
+	var published []string
+	enqueue(make(chan mixer.Sound, 1), newRNG(), func(line string) { published = append(published, line) })(synth.Done)
+	if want := []string{"cue done"}; !slices.Equal(published, want) {
+		t.Errorf("published = %q, want %q", published, want)
+	}
+}
+
+func TestEnqueuePublishesNothingForDroppedCue(t *testing.T) {
+	var published []string
+	enqueue(make(chan mixer.Sound), newRNG(), func(line string) { published = append(published, line) })(synth.Done)
+	if len(published) != 0 {
+		t.Errorf("published = %q, want none", published)
 	}
 }

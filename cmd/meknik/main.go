@@ -14,6 +14,7 @@ import (
 
 	"meknik/control"
 	"meknik/daemon"
+	"meknik/events"
 	"meknik/hookevent"
 	"meknik/mixer"
 	"meknik/playback"
@@ -156,6 +157,10 @@ func runDaemon() error {
 	if err != nil {
 		return err
 	}
+	eventsSocket, err := statedir.RunPath(statedir.EventsSocket)
+	if err != nil {
+		return err
+	}
 	conn, err := transport.Listen(socket)
 	if err != nil {
 		return err
@@ -164,17 +169,22 @@ func runDaemon() error {
 	if err != nil {
 		return errors.Join(err, conn.Close(), os.Remove(socket))
 	}
-	stream, err := playback.Start(playback.Command())
+	eventsListener, err := transport.ListenStream(eventsSocket)
 	if err != nil {
 		return errors.Join(err, conn.Close(), os.Remove(socket), listener.Close())
 	}
+	stream, err := playback.Start(playback.Command())
+	if err != nil {
+		return errors.Join(err, conn.Close(), os.Remove(socket), listener.Close(), eventsListener.Close())
+	}
 	sounds := make(chan mixer.Sound, soundQueue)
 	gains := make(chan float64, soundQueue)
+	hub := events.NewHub()
 	controller := control.NewController(settings,
 		func(s control.Settings) error { return control.Save(settingsPath, s) },
-		func(s control.Settings) { gains <- s.Gain() })
+		func(s control.Settings) { gains <- s.Gain(); hub.Publish(events.SettingsLine(s)) })
 	go func() {
-		if err := transport.Serve(conn, enqueue(sounds, newRNG())); err != nil {
+		if err := transport.Serve(conn, enqueue(sounds, newRNG(), hub.Publish)); err != nil {
 			slog.Error("cue socket failed", "err", err)
 		}
 	}()
@@ -183,13 +193,22 @@ func runDaemon() error {
 			slog.Error("control socket failed", "err", err)
 		}
 	}()
+	go func() {
+		snapshot := func() string {
+			s, _ := controller.Handle(control.Request{Command: control.Status})
+			return events.SettingsLine(s)
+		}
+		if err := transport.ServeEvents(eventsListener, hub.Subscribe, snapshot); err != nil {
+			slog.Error("events socket failed", "err", err)
+		}
+	}()
 	slog.Info("daemon started", "socket", socket, "settings", settings.String(), "idle", idle)
 	playErr := daemon.Play(mixer.New(settings.Gain(), synth.Amplitude(limiterCeilingDB)), sounds, gains, stream, idle, time.Now)
 	slog.Info("daemon stopping")
-	return errors.Join(playErr, conn.Close(), os.Remove(socket), listener.Close(), stream.Close())
+	return errors.Join(playErr, conn.Close(), os.Remove(socket), listener.Close(), eventsListener.Close(), stream.Close())
 }
 
-func enqueue(sounds chan<- mixer.Sound, rng *rand.Rand) func(synth.Cue) {
+func enqueue(sounds chan<- mixer.Sound, rng *rand.Rand, publish func(string)) func(synth.Cue) {
 	return func(c synth.Cue) {
 		samples, ok := synth.Sound(c, rng)
 		if !ok {
@@ -198,6 +217,7 @@ func enqueue(sounds chan<- mixer.Sound, rng *rand.Rand) func(synth.Cue) {
 		}
 		select {
 		case sounds <- mixer.Sound{Samples: samples, Tick: c == synth.Tick}:
+			publish(events.CueLine(c))
 		default:
 			slog.Warn("sound queue full, cue dropped", "cue", c)
 		}
