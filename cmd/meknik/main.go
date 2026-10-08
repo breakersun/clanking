@@ -17,6 +17,7 @@ import (
 	"meknik/hookevent"
 	"meknik/mixer"
 	"meknik/playback"
+	"meknik/selftest"
 	"meknik/statedir"
 	"meknik/synth"
 	"meknik/transport"
@@ -33,7 +34,7 @@ const (
 )
 
 var (
-	errUsage         = errors.New("usage: meknik hook [--no-spawn] | daemon | play <cue> | mute | unmute | toggle | volume <dB> | status")
+	errUsage         = errors.New("usage: meknik hook [--no-spawn] | daemon | play <cue> | mute | unmute | toggle | volume <dB> | status | selftest")
 	errSpawnDisabled = errors.New("no daemon is running and spawning is disabled")
 )
 
@@ -65,6 +66,8 @@ func run(args []string) error {
 		return runControl(args[0])
 	case len(args) == 2 && args[0] == control.Volume:
 		return runControl(strings.Join(args, " "))
+	case slices.Equal(args, []string{"selftest"}):
+		return selftest.RunDaemon(spawnDaemon)
 	}
 	return errUsage
 }

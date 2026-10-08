@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -71,5 +72,11 @@ func TestRunRejectsVolumeWithoutLevel(t *testing.T) {
 func TestRunRejectsInvalidVolumeBeforeContactingDaemon(t *testing.T) {
 	if err := run([]string{"volume", "loud"}); !errors.Is(err, control.ErrInvalid) {
 		t.Errorf("run error = %v, want %v", err, control.ErrInvalid)
+	}
+}
+
+func TestUsageListsSelftest(t *testing.T) {
+	if !strings.Contains(errUsage.Error(), "| selftest") {
+		t.Errorf("usage = %q, want it to list selftest", errUsage)
 	}
 }
