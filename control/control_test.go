@@ -18,6 +18,7 @@ func TestParseAcceptsRequests(t *testing.T) {
 		"mute":        {Command: control.Mute},
 		"unmute\n":    {Command: control.Unmute},
 		"status":      {Command: control.Status},
+		"toggle":      {Command: control.Toggle},
 		"volume -6":   {Command: control.Volume, VolumeDB: -6},
 		"volume 24\n": {Command: control.Volume, VolumeDB: 24},
 	}
@@ -74,6 +75,20 @@ func TestApplyVolumeKeepsMute(t *testing.T) {
 
 func TestApplyUnmute(t *testing.T) {
 	got := control.Settings{VolumeDB: -3, Muted: true}.Apply(control.Request{Command: control.Unmute})
+	if want := (control.Settings{VolumeDB: -3}); got != want {
+		t.Errorf("Apply = %+v, want %+v", got, want)
+	}
+}
+
+func TestApplyToggleMutes(t *testing.T) {
+	got := control.Settings{VolumeDB: -3}.Apply(control.Request{Command: control.Toggle})
+	if want := (control.Settings{VolumeDB: -3, Muted: true}); got != want {
+		t.Errorf("Apply = %+v, want %+v", got, want)
+	}
+}
+
+func TestApplyToggleUnmutes(t *testing.T) {
+	got := control.Settings{VolumeDB: -3, Muted: true}.Apply(control.Request{Command: control.Toggle})
 	if want := (control.Settings{VolumeDB: -3}); got != want {
 		t.Errorf("Apply = %+v, want %+v", got, want)
 	}

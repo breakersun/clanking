@@ -42,7 +42,7 @@ const (
 )
 
 var (
-	errUsage         = errors.New("usage: meknik hook [--no-spawn] | daemon | play <cue> | mute | unmute | volume <dB> | status")
+	errUsage         = errors.New("usage: meknik hook [--no-spawn] | daemon | play <cue> | mute | unmute | toggle | volume <dB> | status")
 	errSpawnDisabled = errors.New("no daemon is running and spawning is disabled")
 )
 
@@ -70,7 +70,7 @@ func run(args []string) error {
 		return runDaemon()
 	case len(args) == 2 && args[0] == "play":
 		return runPlay(synth.Cue(args[1]))
-	case len(args) == 1 && slices.Contains([]string{control.Mute, control.Unmute, control.Status}, args[0]):
+	case len(args) == 1 && slices.Contains([]string{control.Mute, control.Unmute, control.Toggle, control.Status}, args[0]):
 		return runControl(args[0])
 	case len(args) == 2 && args[0] == control.Volume:
 		return runControl(strings.Join(args, " "))

@@ -22,6 +22,7 @@ const (
 	Unmute = "unmute"
 	Volume = "volume"
 	Status = "status"
+	Toggle = "toggle"
 )
 
 // MaxVolumeDB is the loudest volume, where limited output reaches full scale.
@@ -48,7 +49,7 @@ type Request struct {
 func Parse(line string) (Request, error) {
 	fields := strings.Fields(line)
 	switch {
-	case len(fields) == 1 && slices.Contains([]string{Mute, Unmute, Status}, fields[0]):
+	case len(fields) == 1 && slices.Contains([]string{Mute, Unmute, Status, Toggle}, fields[0]):
 		return Request{Command: fields[0]}, nil
 	case len(fields) == 2 && fields[0] == Volume:
 		db, err := strconv.ParseFloat(fields[1], 64)
@@ -74,6 +75,8 @@ func (s Settings) Apply(r Request) Settings {
 		s.Muted = true
 	case Unmute:
 		s.Muted = false
+	case Toggle:
+		s.Muted = !s.Muted
 	case Volume:
 		s.VolumeDB = r.VolumeDB
 	}

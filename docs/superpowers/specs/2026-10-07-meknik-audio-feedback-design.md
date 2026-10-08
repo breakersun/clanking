@@ -74,8 +74,8 @@ tuning the sounds by ear, and needs no daemon.
 
 ### Volume and mute
 
-`meknik mute`, `meknik unmute`, `meknik volume <dB>`, and `meknik status`
-send one request line over a Unix stream socket,
+`meknik mute`, `meknik unmute`, `meknik toggle`, `meknik volume <dB>`, and
+`meknik status` send one request line over a Unix stream socket,
 `$XDG_STATE_HOME/meknik/run/meknik.ctl`, and print the daemon's one-line
 reply, such as `volume -6 dB, muted`. A stream lets the daemon answer on
 the same connection, which also works from a container, where neither
@@ -83,7 +83,9 @@ filesystem nor abstract datagram addresses can be reached back. Volume is
 absolute only; `meknik volume` without a level is a usage error, and a
 level must be finite and at most +24 dB, where limited output reaches
 full scale. Requests are validated before any daemon is contacted. As
-with hooks, a host command starts the daemon when none answers.
+with hooks, a host command starts the daemon when none answers. The
+daemon flips mute for `toggle` under the same lock as other changes, so
+concurrent toggles never race.
 
 The daemon persists the settings to `$XDG_STATE_HOME/meknik/mixer.json`
 (written atomically) and loads them at startup, so mute and volume
