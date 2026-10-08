@@ -1,5 +1,7 @@
 IMAGE = localhost/meknik-build
 BIN = $(HOME)/.local/share/meknik/bin
+APPS = $(HOME)/.local/share/applications
+DESKTOP = tel.lil.meknik.desktop
 IN_IMAGE = podman run --rm -v $(CURDIR):/src:Z -v meknik-gomod:/root/go/pkg/mod -v meknik-gocache:/root/.cache $(IMAGE)
 
 .PHONY: image test lint build install
@@ -22,3 +24,6 @@ install: build
 	ln -sf $(BIN)/meknik $(HOME)/.local/bin/meknik
 	ln -sf $(BIN)/meknik-ui $(HOME)/.local/bin/meknik-ui
 	install -D -m 755 bin/meknik $(HOME)/.local/share/meknik/container-bin/meknik
+	install -d $(APPS)
+	sed 's|@BIN@|$(BIN)|' $(DESKTOP) > $(APPS)/$(DESKTOP)
+	update-desktop-database $(APPS)
