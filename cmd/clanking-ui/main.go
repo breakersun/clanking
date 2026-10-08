@@ -31,9 +31,7 @@ const (
 	volumeStepDB      = 0.5
 	volumeDigits      = 1
 	settingDebounce   = 100 * time.Millisecond
-	tempoStepBPM      = 1
-	tempoPageBPM      = 10
-	tempoLabel        = "bpm"
+	tempoUnit         = "bpm"
 	tempoTooltip      = "Tempo"
 	zeroDetentDB      = 1.0
 	zeroMark          = "0"
@@ -46,7 +44,7 @@ const (
 type panel struct {
 	volume        *gtk.Scale
 	mute          *gtk.ToggleButton
-	tempo         *gtk.SpinButton
+	tempo         *knob
 	errors        *gtk.Label
 	requests      chan control.Request
 	volumePending glib.SourceHandle
@@ -97,7 +95,6 @@ func newPanel(app *gtk.Application, ask func(control.Request) (control.Settings,
 	p := &panel{
 		volume:   gtk.NewScaleWithRange(gtk.OrientationHorizontal, minVolumeDB, control.MaxVolumeDB, volumeStepDB),
 		mute:     gtk.NewToggleButton(),
-		tempo:    gtk.NewSpinButtonWithRange(control.MinTempoBPM, control.MaxTempoBPM, tempoStepBPM),
 		errors:   gtk.NewLabel(""),
 		requests: make(chan control.Request, requestQueue),
 		lamps:    newLamps(),
@@ -113,15 +110,13 @@ func newPanel(app *gtk.Application, ask func(control.Request) (control.Settings,
 	p.mute.SetTooltipText(muteLabel)
 	p.mute.SetVAlign(gtk.AlignCenter)
 	p.mute.ConnectToggled(p.muteToggled)
-	p.tempo.SetIncrements(tempoStepBPM, tempoPageBPM)
-	p.tempo.SetTooltipText(tempoTooltip)
-	p.tempo.SetVAlign(gtk.AlignCenter)
-	p.tempo.ConnectValueChanged(p.tempoChanged)
+	p.tempo = newKnob(control.MinTempoBPM, control.MaxTempoBPM, tempoUnit, p.tempoChanged)
+	p.tempo.box.SetTooltipText(tempoTooltip)
+	p.tempo.box.SetVAlign(gtk.AlignCenter)
 	controls := gtk.NewBox(gtk.OrientationHorizontal, spacing)
 	controls.Append(p.mute)
 	controls.Append(p.volume)
-	controls.Append(p.tempo)
-	controls.Append(gtk.NewLabel(tempoLabel))
+	controls.Append(p.tempo.box)
 	box := gtk.NewBox(gtk.OrientationVertical, spacing)
 	box.SetMarginTop(windowMargin)
 	box.SetMarginBottom(windowMargin)
@@ -159,7 +154,7 @@ func (p *panel) volumeChanged() {
 }
 
 func (p *panel) tempoChanged() {
-	p.sendSettled(&p.tempoPending, func() control.Request { return tempoRequest(p.tempo.ValueAsInt()) })
+	p.sendSettled(&p.tempoPending, func() control.Request { return tempoRequest(p.tempo.value) })
 }
 
 func tempoRequest(bpm int) control.Request {
@@ -223,7 +218,7 @@ func (p *panel) show(settings control.Settings, err error) {
 	p.syncing = true
 	p.volume.SetValue(settings.VolumeDB)
 	p.mute.SetActive(settings.Muted)
-	p.tempo.SetValue(float64(settings.TempoBPM))
+	p.tempo.set(settings.TempoBPM)
 	p.syncing = false
 }
 
