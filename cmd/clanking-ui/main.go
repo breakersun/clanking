@@ -1,4 +1,4 @@
-// Command clanking-ui is a GTK 4 window that sets the clanking daemon's volume and mute.
+// Command clanking-ui is a GTK 4 window that sets the clanking daemon's volume, mute, and tempo.
 package main
 
 import (
@@ -30,7 +30,11 @@ const (
 	minVolumeDB       = -60.0
 	volumeStepDB      = 0.5
 	volumeDigits      = 1
-	volumeDebounce    = 100 * time.Millisecond
+	settingDebounce   = 100 * time.Millisecond
+	tempoStepBPM      = 1
+	tempoPageBPM      = 10
+	tempoLabel        = "bpm"
+	tempoTooltip      = "Tempo"
 	zeroDetentDB      = 1.0
 	zeroMark          = "0"
 	spacing           = 6
@@ -40,13 +44,15 @@ const (
 )
 
 type panel struct {
-	volume   *gtk.Scale
-	mute     *gtk.ToggleButton
-	errors   *gtk.Label
-	requests chan control.Request
-	pending  glib.SourceHandle
-	syncing  bool
-	lamps    *lamps
+	volume        *gtk.Scale
+	mute          *gtk.ToggleButton
+	tempo         *gtk.SpinButton
+	errors        *gtk.Label
+	requests      chan control.Request
+	volumePending glib.SourceHandle
+	tempoPending  glib.SourceHandle
+	syncing       bool
+	lamps         *lamps
 }
 
 func main() {
@@ -91,6 +97,7 @@ func newPanel(app *gtk.Application, ask func(control.Request) (control.Settings,
 	p := &panel{
 		volume:   gtk.NewScaleWithRange(gtk.OrientationHorizontal, minVolumeDB, control.MaxVolumeDB, volumeStepDB),
 		mute:     gtk.NewToggleButton(),
+		tempo:    gtk.NewSpinButtonWithRange(control.MinTempoBPM, control.MaxTempoBPM, tempoStepBPM),
 		errors:   gtk.NewLabel(""),
 		requests: make(chan control.Request, requestQueue),
 		lamps:    newLamps(),
@@ -106,9 +113,15 @@ func newPanel(app *gtk.Application, ask func(control.Request) (control.Settings,
 	p.mute.SetTooltipText(muteLabel)
 	p.mute.SetVAlign(gtk.AlignCenter)
 	p.mute.ConnectToggled(p.muteToggled)
+	p.tempo.SetIncrements(tempoStepBPM, tempoPageBPM)
+	p.tempo.SetTooltipText(tempoTooltip)
+	p.tempo.SetVAlign(gtk.AlignCenter)
+	p.tempo.ConnectValueChanged(p.tempoChanged)
 	controls := gtk.NewBox(gtk.OrientationHorizontal, spacing)
 	controls.Append(p.mute)
 	controls.Append(p.volume)
+	controls.Append(p.tempo)
+	controls.Append(gtk.NewLabel(tempoLabel))
 	box := gtk.NewBox(gtk.OrientationVertical, spacing)
 	box.SetMarginTop(windowMargin)
 	box.SetMarginBottom(windowMargin)
@@ -140,15 +153,29 @@ func detent(db float64) float64 {
 }
 
 func (p *panel) volumeChanged() {
+	p.sendSettled(&p.volumePending, func() control.Request {
+		return control.Request{Command: control.Volume, VolumeDB: p.volume.Value()}
+	})
+}
+
+func (p *panel) tempoChanged() {
+	p.sendSettled(&p.tempoPending, func() control.Request { return tempoRequest(p.tempo.ValueAsInt()) })
+}
+
+func tempoRequest(bpm int) control.Request {
+	return control.Request{Command: control.Tempo, TempoBPM: bpm}
+}
+
+func (p *panel) sendSettled(pending *glib.SourceHandle, request func() control.Request) {
 	if p.syncing {
 		return
 	}
-	if p.pending != 0 {
-		glib.SourceRemove(p.pending)
+	if *pending != 0 {
+		glib.SourceRemove(*pending)
 	}
-	p.pending = glib.TimeoutAdd(uint(volumeDebounce.Milliseconds()), func() {
-		p.pending = 0
-		p.send(control.Request{Command: control.Volume, VolumeDB: p.volume.Value()})
+	*pending = glib.TimeoutAdd(uint(settingDebounce.Milliseconds()), func() {
+		*pending = 0
+		p.send(request())
 	})
 }
 
@@ -196,6 +223,7 @@ func (p *panel) show(settings control.Settings, err error) {
 	p.syncing = true
 	p.volume.SetValue(settings.VolumeDB)
 	p.mute.SetActive(settings.Muted)
+	p.tempo.SetValue(float64(settings.TempoBPM))
 	p.syncing = false
 }
 

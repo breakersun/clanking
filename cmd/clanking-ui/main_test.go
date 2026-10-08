@@ -40,6 +40,12 @@ func TestDetentKeepsValuesOutsideIt(t *testing.T) {
 	}
 }
 
+func TestTempoRequestCarriesBPM(t *testing.T) {
+	if got, want := tempoRequest(85), (control.Request{Command: control.Tempo, TempoBPM: 85}); got != want {
+		t.Errorf("tempoRequest(85) = %+v, want %+v", got, want)
+	}
+}
+
 func TestMuteIconWhenMuted(t *testing.T) {
 	if got := muteIcon(true); got != "audio-volume-muted-symbolic" {
 		t.Errorf("muteIcon(true) = %q, want audio-volume-muted-symbolic", got)
