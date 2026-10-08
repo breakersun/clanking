@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"testing"
 
-	"meknik/pan"
-	"meknik/playback"
+	"github.com/chrchr/clanking/pan"
+	"github.com/chrchr/clanking/playback"
 )
 
 func TestEncodeWritesLittleEndianFloat32(t *testing.T) {

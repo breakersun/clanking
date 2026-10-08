@@ -5,12 +5,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"meknik/control"
-	"meknik/transport"
+	"github.com/chrchr/clanking/control"
+	"github.com/chrchr/clanking/transport"
 )
 
 const (
-	controlName = "meknik.ctl"
+	controlName = "clanking.ctl"
 	gridState   = "in 16ths, 0 queued, 0 dropped"
 )
 

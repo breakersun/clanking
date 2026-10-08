@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"meknik/control"
+	"github.com/chrchr/clanking/control"
 )
 
 const (

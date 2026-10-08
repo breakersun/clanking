@@ -6,10 +6,10 @@ import (
 	"os/exec"
 	"syscall"
 
-	"meknik/statedir"
+	"github.com/chrchr/clanking/statedir"
 )
 
-// Command returns the detached `meknik daemon` process, logging its stderr to logFile.
+// Command returns the detached `clanking daemon` process, logging its stderr to logFile.
 func Command(binary string, logFile *os.File) *exec.Cmd {
 	cmd := exec.Command(binary, "daemon")
 	cmd.Dir = "/"

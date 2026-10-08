@@ -1,4 +1,4 @@
-// Command meknik-ui is a GTK 4 window that sets the meknik daemon's volume and mute.
+// Command clanking-ui is a GTK 4 window that sets the clanking daemon's volume and mute.
 package main
 
 import (
@@ -13,17 +13,17 @@ import (
 	"github.com/diamondburned/gotk4/pkg/gio/v2"
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 
-	"meknik/control"
-	"meknik/daemon"
-	"meknik/events"
-	"meknik/statedir"
-	"meknik/transport"
+	"github.com/chrchr/clanking/control"
+	"github.com/chrchr/clanking/daemon"
+	"github.com/chrchr/clanking/events"
+	"github.com/chrchr/clanking/statedir"
+	"github.com/chrchr/clanking/transport"
 )
 
 const (
-	appID             = "tel.lil.meknik"
-	title             = "meknik"
-	daemonBinary      = "meknik"
+	appID             = "io.github.chrchr.clanking"
+	title             = "clanking"
+	daemonBinary      = "clanking"
 	muteLabel         = "Mute"
 	mutedIcon         = "audio-volume-muted-symbolic"
 	unmutedIcon       = "audio-volume-high-symbolic"
@@ -181,7 +181,7 @@ func forward(requests <-chan control.Request, ask func(control.Request) (control
 
 func (p *panel) showError(err error) {
 	if err != nil {
-		slog.Error("meknik-ui request failed", "err", err)
+		slog.Error("clanking-ui request failed", "err", err)
 		p.errors.SetText(err.Error())
 		return
 	}

@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"meknik/control"
-	"meknik/daemon"
-	"meknik/mixer"
-	"meknik/pan"
-	"meknik/synth"
+	"github.com/chrchr/clanking/control"
+	"github.com/chrchr/clanking/daemon"
+	"github.com/chrchr/clanking/mixer"
+	"github.com/chrchr/clanking/pan"
+	"github.com/chrchr/clanking/synth"
 )
 
 const stallWait = time.Second
@@ -84,7 +84,7 @@ func TestUsageListsSelftest(t *testing.T) {
 }
 
 func TestPlayUsageListsEveryCue(t *testing.T) {
-	want := "usage: meknik play <cue>\ncues: tick spawn return failed permission ask reply milestone noted done"
+	want := "usage: clanking play <cue>\ncues: tick spawn return failed permission ask reply milestone noted done"
 	if got := playUsage(); got != want {
 		t.Errorf("playUsage = %q, want %q", got, want)
 	}
@@ -119,8 +119,8 @@ func TestUsageListsTempo(t *testing.T) {
 
 func TestEnqueuePansByCwd(t *testing.T) {
 	sounds := make(chan mixer.Sound, 1)
-	enqueue(sounds, newRNG())(synth.Done, "/home/rc/meknik")
-	if got := (<-sounds).Pan; got != pan.Of("/home/rc/meknik") {
-		t.Errorf("Pan = %v, want %v", got, pan.Of("/home/rc/meknik"))
+	enqueue(sounds, newRNG())(synth.Done, "/home/rc/clanking")
+	if got := (<-sounds).Pan; got != pan.Of("/home/rc/clanking") {
+		t.Errorf("Pan = %v, want %v", got, pan.Of("/home/rc/clanking"))
 	}
 }

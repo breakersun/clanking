@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"meknik/internal/approx"
-	"meknik/synth"
+	"github.com/chrchr/clanking/internal/approx"
+	"github.com/chrchr/clanking/synth"
 )
 
 const (

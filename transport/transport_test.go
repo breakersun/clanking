@@ -8,12 +8,12 @@ import (
 	"testing"
 	"time"
 
-	"meknik/synth"
-	"meknik/transport"
+	"github.com/chrchr/clanking/synth"
+	"github.com/chrchr/clanking/transport"
 )
 
 const (
-	socketName    = "meknik.sock"
+	socketName    = "clanking.sock"
 	receiveWait   = time.Second
 	shortTimeout  = 20 * time.Millisecond
 	retryInterval = 5 * time.Millisecond
@@ -144,7 +144,7 @@ func TestSendGivesUpWhenDaemonStopsReading(t *testing.T) {
 }
 
 const (
-	spacedCwd      = "/home/rc/My Projects/meknik"
+	spacedCwd      = "/home/rc/My Projects/clanking"
 	longPathLength = 4000
 )
 

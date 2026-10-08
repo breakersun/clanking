@@ -1,4 +1,4 @@
-// Package statedir locates meknik's state files and sockets.
+// Package statedir locates clanking's state files and sockets.
 package statedir
 
 import (
@@ -7,23 +7,23 @@ import (
 )
 
 // ControlSocket is the name of the daemon's control socket in the run directory.
-const ControlSocket = "meknik.ctl"
+const ControlSocket = "clanking.ctl"
 
 // CueSocket is the name of the daemon's cue socket in the run directory.
-const CueSocket = "meknik.sock"
+const CueSocket = "clanking.sock"
 
 // EventsSocket is the name of the daemon's events socket in the run directory.
-const EventsSocket = "meknik.events"
+const EventsSocket = "clanking.events"
 
 const (
-	appName    = "meknik"
+	appName    = "clanking"
 	runDirName = "run"
-	logName    = "meknik.log"
+	logName    = "clanking.log"
 	logMode    = 0o644
 	dirMode    = 0o755
 )
 
-// Path returns the path of a file in meknik's state directory.
+// Path returns the path of a file in clanking's state directory.
 func Path(name string) (string, error) {
 	dir, err := stateDir()
 	return filepath.Join(dir, name), err

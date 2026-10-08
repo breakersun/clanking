@@ -5,8 +5,8 @@ import (
 	"math"
 	"slices"
 
-	"meknik/pan"
-	"meknik/synth"
+	"github.com/chrchr/clanking/pan"
+	"github.com/chrchr/clanking/synth"
 )
 
 // MaxVoices caps how many sounds play at once.

@@ -3,8 +3,8 @@ package grid
 
 import (
 	"fmt"
-	"meknik/mixer"
-	"meknik/synth"
+	"github.com/chrchr/clanking/mixer"
+	"github.com/chrchr/clanking/synth"
 	"sync/atomic"
 )
 

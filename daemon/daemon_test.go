@@ -11,17 +11,17 @@ import (
 	"testing"
 	"time"
 
-	"meknik/control"
-	"meknik/daemon"
-	"meknik/grid"
-	"meknik/internal/approx"
-	"meknik/mixer"
-	"meknik/pan"
-	"meknik/synth"
+	"github.com/chrchr/clanking/control"
+	"github.com/chrchr/clanking/daemon"
+	"github.com/chrchr/clanking/grid"
+	"github.com/chrchr/clanking/internal/approx"
+	"github.com/chrchr/clanking/mixer"
+	"github.com/chrchr/clanking/pan"
+	"github.com/chrchr/clanking/synth"
 )
 
 const (
-	lockName       = "meknik.lock"
+	lockName       = "clanking.lock"
 	idle           = 10 * time.Millisecond
 	clockStep      = time.Millisecond
 	unity          = 1.0

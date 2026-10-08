@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"meknik/control"
+	"github.com/chrchr/clanking/control"
 )
 
 const slowAsk = 50 * time.Millisecond

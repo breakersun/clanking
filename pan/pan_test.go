@@ -4,22 +4,22 @@ import (
 	"math"
 	"testing"
 
-	"meknik/internal/approx"
-	"meknik/pan"
+	"github.com/chrchr/clanking/internal/approx"
+	"github.com/chrchr/clanking/pan"
 )
 
 const (
-	tolerance = 1e-9
-	meknikDir = "/home/rc/meknik"
-	otherDir  = "/home/rc/lil.tel"
-	spaceDir  = "/home/rc/My Projects/x"
-	hardLeft  = -1.0
+	tolerance   = 1e-9
+	clankingDir = "/home/rc/clanking"
+	otherDir    = "/home/rc/lil.tel"
+	spaceDir    = "/home/rc/My Projects/x"
+	hardLeft    = -1.0
 )
 
-var someDirs = []string{meknikDir, otherDir, spaceDir, "/", "/tmp", "/home/rc", "/var/local/windows", "/home/rc/ia"}
+var someDirs = []string{clankingDir, otherDir, spaceDir, "/", "/tmp", "/home/rc", "/var/local/windows", "/home/rc/ia"}
 
 func TestOfIsStable(t *testing.T) {
-	if a, b := pan.Of(meknikDir), pan.Of(meknikDir); a != b {
+	if a, b := pan.Of(clankingDir), pan.Of(clankingDir); a != b {
 		t.Errorf("Of twice = %v then %v, want equal", a, b)
 	}
 }
@@ -35,8 +35,8 @@ func TestOfStaysWithinWidth(t *testing.T) {
 }
 
 func TestOfSeparatesDirectories(t *testing.T) {
-	if a, b := pan.Of(meknikDir), pan.Of(otherDir); a == b {
-		t.Errorf("Of(%q) = Of(%q) = %v, want different", meknikDir, otherDir, a)
+	if a, b := pan.Of(clankingDir), pan.Of(otherDir); a == b {
+		t.Errorf("Of(%q) = Of(%q) = %v, want different", clankingDir, otherDir, a)
 	}
 }
 

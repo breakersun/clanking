@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"io"
 
-	"meknik/synth"
+	"github.com/chrchr/clanking/synth"
 )
 
 const (

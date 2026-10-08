@@ -9,7 +9,7 @@ import (
 	"github.com/diamondburned/gotk4/pkg/gdk/v4"
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 
-	"meknik/synth"
+	"github.com/chrchr/clanking/synth"
 )
 
 const (

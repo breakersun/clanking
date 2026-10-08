@@ -3,28 +3,28 @@ package statedir_test
 import (
 	"testing"
 
-	"meknik/statedir"
+	"github.com/chrchr/clanking/statedir"
 )
 
 func TestPathLivesUnderStateHome(t *testing.T) {
 	t.Setenv("XDG_STATE_HOME", "/state")
-	if got, _ := statedir.Path("meknik.log"); got != "/state/meknik/meknik.log" {
-		t.Errorf("Path = %q, want /state/meknik/meknik.log", got)
+	if got, _ := statedir.Path("clanking.log"); got != "/state/clanking/clanking.log" {
+		t.Errorf("Path = %q, want /state/clanking/clanking.log", got)
 	}
 }
 
 func TestPathFallsBackToHome(t *testing.T) {
 	t.Setenv("XDG_STATE_HOME", "")
 	t.Setenv("HOME", "/home/u")
-	if got, _ := statedir.Path("meknik.log"); got != "/home/u/.local/state/meknik/meknik.log" {
-		t.Errorf("Path = %q, want /home/u/.local/state/meknik/meknik.log", got)
+	if got, _ := statedir.Path("clanking.log"); got != "/home/u/.local/state/clanking/clanking.log" {
+		t.Errorf("Path = %q, want /home/u/.local/state/clanking/clanking.log", got)
 	}
 }
 
 func TestRunPathLivesInSharedRunDir(t *testing.T) {
 	t.Setenv("XDG_STATE_HOME", "/state")
-	if got, _ := statedir.RunPath(statedir.ControlSocket); got != "/state/meknik/run/meknik.ctl" {
-		t.Errorf("RunPath = %q, want /state/meknik/run/meknik.ctl", got)
+	if got, _ := statedir.RunPath(statedir.ControlSocket); got != "/state/clanking/run/clanking.ctl" {
+		t.Errorf("RunPath = %q, want /state/clanking/run/clanking.ctl", got)
 	}
 }
 
@@ -41,14 +41,14 @@ func TestOpenLogCreatesStateDir(t *testing.T) {
 
 func TestCueSocketLivesInSharedRunDir(t *testing.T) {
 	t.Setenv("XDG_STATE_HOME", "/state")
-	if got, _ := statedir.RunPath(statedir.CueSocket); got != "/state/meknik/run/meknik.sock" {
-		t.Errorf("RunPath = %q, want /state/meknik/run/meknik.sock", got)
+	if got, _ := statedir.RunPath(statedir.CueSocket); got != "/state/clanking/run/clanking.sock" {
+		t.Errorf("RunPath = %q, want /state/clanking/run/clanking.sock", got)
 	}
 }
 
 func TestEventsSocketLivesInSharedRunDir(t *testing.T) {
 	t.Setenv("XDG_STATE_HOME", "/state")
-	if got, _ := statedir.RunPath(statedir.EventsSocket); got != "/state/meknik/run/meknik.events" {
-		t.Errorf("RunPath = %q, want /state/meknik/run/meknik.events", got)
+	if got, _ := statedir.RunPath(statedir.EventsSocket); got != "/state/clanking/run/clanking.events" {
+		t.Errorf("RunPath = %q, want /state/clanking/run/clanking.events", got)
 	}
 }

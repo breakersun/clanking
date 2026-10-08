@@ -10,11 +10,11 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	"meknik/control"
-	"meknik/grid"
-	"meknik/mixer"
-	"meknik/pan"
-	"meknik/playback"
+	"github.com/chrchr/clanking/control"
+	"github.com/chrchr/clanking/grid"
+	"github.com/chrchr/clanking/mixer"
+	"github.com/chrchr/clanking/pan"
+	"github.com/chrchr/clanking/playback"
 )
 
 // BlockFrames is the number of frames rendered per write.

@@ -3,9 +3,9 @@ package grid_test
 import (
 	"testing"
 
-	"meknik/grid"
-	"meknik/mixer"
-	"meknik/synth"
+	"github.com/chrchr/clanking/grid"
+	"github.com/chrchr/clanking/mixer"
+	"github.com/chrchr/clanking/synth"
 )
 
 const (

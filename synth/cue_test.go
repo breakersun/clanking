@@ -6,8 +6,8 @@ import (
 	"slices"
 	"testing"
 
-	"meknik/internal/approx"
-	"meknik/synth"
+	"github.com/chrchr/clanking/internal/approx"
+	"github.com/chrchr/clanking/synth"
 )
 
 const (

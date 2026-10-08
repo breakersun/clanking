@@ -7,8 +7,8 @@ import (
 	"strings"
 	"sync"
 
-	"meknik/control"
-	"meknik/synth"
+	"github.com/chrchr/clanking/control"
+	"github.com/chrchr/clanking/synth"
 )
 
 const (

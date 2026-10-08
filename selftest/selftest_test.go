@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"meknik/control"
-	"meknik/selftest"
-	"meknik/synth"
+	"github.com/chrchr/clanking/control"
+	"github.com/chrchr/clanking/selftest"
+	"github.com/chrchr/clanking/synth"
 )
 
 const cuePause = 400 * time.Millisecond

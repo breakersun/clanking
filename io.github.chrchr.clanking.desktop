@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=clanking
+Comment=Set the volume and mute of clanking's audio cues
+Exec=@BIN@/clanking-ui
+Icon=io.github.chrchr.clanking
+Terminal=false
+Categories=AudioVideo;Audio;

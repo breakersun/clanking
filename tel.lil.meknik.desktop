@@ -1,8 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=meknik
-Comment=Set the volume and mute of meknik's audio cues
-Exec=@BIN@/meknik-ui
-Icon=tel.lil.meknik
-Terminal=false
-Categories=AudioVideo;Audio;

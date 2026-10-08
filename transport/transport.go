@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"meknik/synth"
+	"github.com/chrchr/clanking/synth"
 )
 
 const (

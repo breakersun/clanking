@@ -4,10 +4,10 @@ import (
 	"math"
 	"testing"
 
-	"meknik/internal/approx"
-	"meknik/mixer"
-	"meknik/pan"
-	"meknik/synth"
+	"github.com/chrchr/clanking/internal/approx"
+	"github.com/chrchr/clanking/mixer"
+	"github.com/chrchr/clanking/pan"
+	"github.com/chrchr/clanking/synth"
 )
 
 const (

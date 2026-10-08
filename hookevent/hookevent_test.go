@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"meknik/hookevent"
-	"meknik/synth"
+	"github.com/chrchr/clanking/hookevent"
+	"github.com/chrchr/clanking/synth"
 )
 
 type result struct {
@@ -52,8 +52,8 @@ func TestParseRejectsEmptyInput(t *testing.T) {
 }
 
 func TestParseReadsCwd(t *testing.T) {
-	ev, _, _ := hookevent.Parse(strings.NewReader(`{"hook_event_name":"Stop","cwd":"/home/rc/meknik"}`))
-	if ev.Cwd != "/home/rc/meknik" {
-		t.Errorf("Cwd = %q, want %q", ev.Cwd, "/home/rc/meknik")
+	ev, _, _ := hookevent.Parse(strings.NewReader(`{"hook_event_name":"Stop","cwd":"/home/rc/clanking"}`))
+	if ev.Cwd != "/home/rc/clanking" {
+		t.Errorf("Cwd = %q, want %q", ev.Cwd, "/home/rc/clanking")
 	}
 }

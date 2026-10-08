@@ -1,4 +1,4 @@
-// Command meknik plays synthesized audio cues for Claude Code hook events.
+// Command clanking plays synthesized audio cues for Claude Code hook events.
 package main
 
 import (
@@ -12,26 +12,26 @@ import (
 	"strings"
 	"time"
 
-	"meknik/control"
-	"meknik/daemon"
-	"meknik/events"
-	"meknik/grid"
-	"meknik/hookevent"
-	"meknik/mixer"
-	"meknik/pan"
-	"meknik/playback"
-	"meknik/selftest"
-	"meknik/statedir"
-	"meknik/synth"
-	"meknik/transport"
+	"github.com/chrchr/clanking/control"
+	"github.com/chrchr/clanking/daemon"
+	"github.com/chrchr/clanking/events"
+	"github.com/chrchr/clanking/grid"
+	"github.com/chrchr/clanking/hookevent"
+	"github.com/chrchr/clanking/mixer"
+	"github.com/chrchr/clanking/pan"
+	"github.com/chrchr/clanking/playback"
+	"github.com/chrchr/clanking/selftest"
+	"github.com/chrchr/clanking/statedir"
+	"github.com/chrchr/clanking/synth"
+	"github.com/chrchr/clanking/transport"
 )
 
 const (
-	lockName         = "meknik.lock"
+	lockName         = "clanking.lock"
 	settingsName     = "mixer.json"
 	noSpawnFlag      = "--no-spawn"
 	helpFlag         = "--help"
-	idleEnv          = "MEKNIK_IDLE_TIMEOUT"
+	idleEnv          = "CLANKING_IDLE_TIMEOUT"
 	limiterCeilingDB = -24.0
 	soundQueue       = 64
 	dirMode          = 0o755
@@ -39,7 +39,7 @@ const (
 )
 
 var (
-	errUsage         = errors.New("usage: meknik hook [--no-spawn] | daemon | play <cue> | mute | unmute | toggle | volume <dB> | tempo <bpm> | status | selftest")
+	errUsage         = errors.New("usage: clanking hook [--no-spawn] | daemon | play <cue> | mute | unmute | toggle | volume <dB> | tempo <bpm> | status | selftest")
 	errSpawnDisabled = errors.New("no daemon is running and spawning is disabled")
 )
 
@@ -51,8 +51,8 @@ func main() {
 	}
 	slog.SetDefault(slog.New(slog.NewTextHandler(logFile, nil)))
 	if err := run(os.Args[1:]); err != nil {
-		slog.Error("meknik failed", "args", os.Args[1:], "err", err)
-		fmt.Fprintln(os.Stderr, "meknik:", err)
+		slog.Error("clanking failed", "args", os.Args[1:], "err", err)
+		fmt.Fprintln(os.Stderr, "clanking:", err)
 		os.Exit(1)
 	}
 }
@@ -85,7 +85,7 @@ func playUsage() string {
 	for i, c := range synth.Cues {
 		names[i] = string(c)
 	}
-	return "usage: meknik play <cue>\ncues: " + strings.Join(names, " ")
+	return "usage: clanking play <cue>\ncues: " + strings.Join(names, " ")
 }
 
 func runHook(spawn func() error) error {

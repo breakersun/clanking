@@ -5,9 +5,9 @@ import (
 	"slices"
 	"testing"
 
-	"meknik/control"
-	"meknik/events"
-	"meknik/synth"
+	"github.com/chrchr/clanking/control"
+	"github.com/chrchr/clanking/events"
+	"github.com/chrchr/clanking/synth"
 )
 
 const subscriberQueue = 64

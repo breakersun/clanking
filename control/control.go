@@ -13,7 +13,7 @@ import (
 	"strings"
 	"sync"
 
-	"meknik/synth"
+	"github.com/chrchr/clanking/synth"
 )
 
 // The request commands.

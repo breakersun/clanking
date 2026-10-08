@@ -12,8 +12,8 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	"meknik/pan"
-	"meknik/synth"
+	"github.com/chrchr/clanking/pan"
+	"github.com/chrchr/clanking/synth"
 )
 
 // PipeBytes bounds the pipe to pw-cat so that queued audio stays short.
@@ -27,7 +27,7 @@ var pwCatArgs = []string{
 	"--format", "f32",
 	"--rate", strconv.Itoa(synth.SampleRate),
 	"--channels", strconv.Itoa(pan.Channels),
-	"--properties", "application.name=meknik",
+	"--properties", "application.name=clanking",
 	"-",
 }
 

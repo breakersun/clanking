@@ -1,4 +1,4 @@
-module meknik
+module github.com/chrchr/clanking
 
 go 1.26.7
 

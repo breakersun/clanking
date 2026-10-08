@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"meknik/control"
-	"meknik/internal/approx"
+	"github.com/chrchr/clanking/control"
+	"github.com/chrchr/clanking/internal/approx"
 )
 
 const tolerance = 1e-9

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"meknik/synth"
+	"github.com/chrchr/clanking/synth"
 )
 
 func TestEveryCueHasALampColour(t *testing.T) {

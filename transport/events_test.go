@@ -5,12 +5,12 @@ import (
 	"testing"
 	"time"
 
-	"meknik/events"
-	"meknik/transport"
+	"github.com/chrchr/clanking/events"
+	"github.com/chrchr/clanking/transport"
 )
 
 const (
-	eventsName  = "meknik.events"
+	eventsName  = "clanking.events"
 	snapshot    = "settings volume 0 dB, unmuted, 120 bpm"
 	eventWait   = time.Second
 	watchBuffer = 8

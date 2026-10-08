@@ -6,15 +6,15 @@ import (
 	"math/rand/v2"
 	"time"
 
-	"meknik/control"
-	"meknik/statedir"
-	"meknik/synth"
-	"meknik/transport"
+	"github.com/chrchr/clanking/control"
+	"github.com/chrchr/clanking/statedir"
+	"github.com/chrchr/clanking/synth"
+	"github.com/chrchr/clanking/transport"
 )
 
 const cuePause = 400 * time.Millisecond
 
-// ErrMuted reports a self-test refused because meknik is muted.
+// ErrMuted reports a self-test refused because clanking is muted.
 var ErrMuted = errors.New("muted; unmute to run the self-test")
 
 // Run plays every cue once through send, waiting for each to finish, and refuses while muted.
