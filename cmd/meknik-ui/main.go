@@ -15,6 +15,7 @@ import (
 
 	"meknik/control"
 	"meknik/daemon"
+	"meknik/selftest"
 	"meknik/statedir"
 	"meknik/transport"
 )
@@ -24,6 +25,7 @@ const (
 	title          = "meknik"
 	daemonBinary   = "meknik"
 	muteLabel      = "Mute"
+	selfTestLabel  = "Self-test"
 	minVolumeDB    = -60.0
 	volumeStepDB   = 0.5
 	volumeDigits   = 1
@@ -37,8 +39,10 @@ const (
 type panel struct {
 	volume   *gtk.Scale
 	mute     *gtk.ToggleButton
+	selfTest *gtk.Button
 	errors   *gtk.Label
 	requests chan control.Request
+	test     func() error
 	pending  glib.SourceHandle
 	syncing  bool
 }
@@ -51,7 +55,9 @@ func main() {
 	}
 	slog.SetDefault(slog.New(slog.NewTextHandler(logFile, nil)))
 	app := gtk.NewApplication(appID, gio.ApplicationDefaultFlags)
-	app.ConnectActivate(func() { newPanel(app, askDaemon).send(control.Request{Command: control.Status}) })
+	app.ConnectActivate(func() {
+		newPanel(app, askDaemon, func() error { return selftest.RunDaemon(spawnSibling) }).send(control.Request{Command: control.Status})
+	})
 	os.Exit(app.Run(os.Args))
 }
 
@@ -71,12 +77,14 @@ func spawnSibling() error {
 	return daemon.Spawn(filepath.Join(filepath.Dir(self), daemonBinary))
 }
 
-func newPanel(app *gtk.Application, ask func(control.Request) (control.Settings, error)) *panel {
+func newPanel(app *gtk.Application, ask func(control.Request) (control.Settings, error), test func() error) *panel {
 	p := &panel{
 		volume:   gtk.NewScaleWithRange(gtk.OrientationHorizontal, minVolumeDB, control.MaxVolumeDB, volumeStepDB),
 		mute:     gtk.NewToggleButtonWithLabel(muteLabel),
 		errors:   gtk.NewLabel(""),
+		selfTest: gtk.NewButtonWithLabel(selfTestLabel),
 		requests: make(chan control.Request, requestQueue),
+		test:     test,
 	}
 	go forward(p.requests, ask, func(s control.Settings, err error) { glib.IdleAdd(func() { p.show(s, err) }) })
 	p.volume.SetDrawValue(true)
@@ -86,9 +94,11 @@ func newPanel(app *gtk.Application, ask func(control.Request) (control.Settings,
 	p.volume.ConnectChangeValue(p.volumeDragged)
 	p.volume.ConnectValueChanged(p.volumeChanged)
 	p.mute.ConnectToggled(p.muteToggled)
+	p.selfTest.ConnectClicked(p.runSelfTest)
 	box := gtk.NewBox(gtk.OrientationVertical, spacing)
 	box.Append(p.volume)
 	box.Append(p.mute)
+	box.Append(p.selfTest)
 	box.Append(p.errors)
 	window := gtk.NewApplicationWindow(app)
 	window.SetTitle(title)
@@ -136,6 +146,17 @@ func (p *panel) muteToggled() {
 	p.send(control.Request{Command: command})
 }
 
+func (p *panel) runSelfTest() {
+	p.selfTest.SetSensitive(false)
+	go func() {
+		err := p.test()
+		glib.IdleAdd(func() {
+			p.selfTest.SetSensitive(true)
+			p.showError(err)
+		})
+	}()
+}
+
 func (p *panel) send(r control.Request) { p.requests <- r }
 
 func forward(requests <-chan control.Request, ask func(control.Request) (control.Settings, error), reply func(control.Settings, error)) {
@@ -144,13 +165,20 @@ func forward(requests <-chan control.Request, ask func(control.Request) (control
 	}
 }
 
-func (p *panel) show(settings control.Settings, err error) {
+func (p *panel) showError(err error) {
 	if err != nil {
-		slog.Error("control request failed", "err", err)
+		slog.Error("meknik-ui request failed", "err", err)
 		p.errors.SetText(err.Error())
 		return
 	}
 	p.errors.SetText("")
+}
+
+func (p *panel) show(settings control.Settings, err error) {
+	p.showError(err)
+	if err != nil {
+		return
+	}
 	p.syncing = true
 	p.volume.SetValue(settings.VolumeDB)
 	p.mute.SetActive(settings.Muted)
