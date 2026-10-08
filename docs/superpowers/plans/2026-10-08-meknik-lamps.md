@@ -311,10 +311,9 @@ import (
 )
 
 const (
-	eventsName  = "meknik.events"
-	snapshot    = "settings volume 0 dB, unmuted"
-	eventWait   = time.Second
-	publishWait = 50 * time.Millisecond
+	eventsName = "meknik.events"
+	snapshot   = "settings volume 0 dB, unmuted"
+	eventWait  = time.Second
 )
 
 func serveEvents(t *testing.T, hub *events.Hub) (string, net.Listener) {
@@ -379,8 +378,6 @@ func TestWatchReturnsWhenServerCloses(t *testing.T) {
 	}
 }
 ```
-
-(`publishWait` is unused if `next` suffices; delete it if lint flags it.)
 
 - [ ] **Step 2: Run tests to verify they fail** — `make test`; Expected: FAIL, undefined `transport.ListenStream`, `transport.ServeEvents`, `transport.Watch`, `statedir.EventsSocket`.
 
