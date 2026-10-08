@@ -16,6 +16,7 @@ import (
 	"meknik/grid"
 	"meknik/internal/approx"
 	"meknik/mixer"
+	"meknik/pan"
 	"meknik/synth"
 )
 
@@ -28,6 +29,7 @@ const (
 	sample         = 0.1
 	tolerance      = 1e-4
 	bytesPerSample = 4
+	hardLeft       = -1.0
 )
 
 var errBroken = errors.New("pipe broken")
@@ -78,14 +80,14 @@ func TestPlayStopsWhenIdle(t *testing.T) {
 }
 
 func TestPlayWritesWholeBlocks(t *testing.T) {
-	if got := play(make(chan mixer.Sound)).Len() % (daemon.BlockFrames * bytesPerSample); got != 0 {
+	if got := play(make(chan mixer.Sound)).Len() % (pan.Channels * daemon.BlockFrames * bytesPerSample); got != 0 {
 		t.Errorf("output length remainder = %d, want 0", got)
 	}
 }
 
 func TestPlayWritesQueuedSound(t *testing.T) {
 	sounds := make(chan mixer.Sound, 1)
-	sounds <- mixer.Sound{Samples: []float32{sample}}
+	sounds <- mixer.Sound{Samples: []float32{sample}, Pan: hardLeft}
 	got := float64(math.Float32frombits(binary.LittleEndian.Uint32(play(sounds).Bytes())))
 	if !approx.Equal(sample, got, tolerance) {
 		t.Errorf("first sample = %v, want %v", got, sample)
@@ -128,7 +130,7 @@ func TestLockRefusesSymlink(t *testing.T) {
 
 func TestPlayAppliesQueuedGain(t *testing.T) {
 	sounds := make(chan mixer.Sound, 1)
-	sounds <- mixer.Sound{Samples: []float32{sample}}
+	sounds <- mixer.Sound{Samples: []float32{sample}, Pan: hardLeft}
 	settings := make(chan control.Settings, 1)
 	settings <- control.Settings{Muted: true, TempoBPM: control.DefaultTempoBPM}
 	var out bytes.Buffer

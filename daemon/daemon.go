@@ -13,6 +13,7 @@ import (
 	"meknik/control"
 	"meknik/grid"
 	"meknik/mixer"
+	"meknik/pan"
 	"meknik/playback"
 )
 
@@ -42,7 +43,7 @@ func Lock(path string) (*os.File, bool, error) {
 
 // Play schedules queued sounds on the grid and mixes them into out block by block, applying queued settings, until idle passes with no new sound, or forever with NeverIdle.
 func Play(m *mixer.Mixer, s *grid.Scheduler, sounds <-chan mixer.Sound, settings <-chan control.Settings, out io.Writer, idle time.Duration, now func() time.Time, started func(mixer.Sound)) error {
-	block := make([]float32, BlockFrames)
+	block := make([]float32, pan.Channels*BlockFrames)
 	var pcm []byte
 	last := now()
 	for idle == NeverIdle || now().Sub(last) < idle {

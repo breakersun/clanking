@@ -12,6 +12,7 @@ import (
 
 	"golang.org/x/sys/unix"
 
+	"meknik/pan"
 	"meknik/synth"
 )
 
@@ -25,7 +26,7 @@ var pwCatArgs = []string{
 	"--playback", "--raw",
 	"--format", "f32",
 	"--rate", strconv.Itoa(synth.SampleRate),
-	"--channels", "1",
+	"--channels", strconv.Itoa(pan.Channels),
 	"--properties", "application.name=meknik",
 	"-",
 }
@@ -44,7 +45,7 @@ type Stream struct {
 	pipe *os.File
 }
 
-// Command returns the pw-cat invocation that plays raw mono float32 PCM from stdin.
+// Command returns the pw-cat invocation that plays raw interleaved stereo float32 PCM from stdin.
 func Command() *exec.Cmd { return exec.Command("pw-cat", pwCatArgs...) }
 
 // Start launches a player reading raw PCM from a short pipe.

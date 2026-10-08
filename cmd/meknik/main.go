@@ -18,6 +18,7 @@ import (
 	"meknik/grid"
 	"meknik/hookevent"
 	"meknik/mixer"
+	"meknik/pan"
 	"meknik/playback"
 	"meknik/selftest"
 	"meknik/statedir"
@@ -243,7 +244,7 @@ func runPlay(c synth.Cue) error {
 	if err != nil {
 		return err
 	}
-	_, err = stream.Write(playback.Encode(nil, samples))
+	_, err = stream.Write(playback.Encode(nil, pan.Interleave(samples, 0)))
 	return errors.Join(err, stream.Close())
 }
 

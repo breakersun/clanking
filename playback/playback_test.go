@@ -5,8 +5,11 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"slices"
+	"strconv"
 	"testing"
 
+	"meknik/pan"
 	"meknik/playback"
 )
 
@@ -32,5 +35,13 @@ func TestWriteFailsWhenPlayerStopsReading(t *testing.T) {
 	t.Cleanup(func() { _ = cmd.Process.Kill(); _ = cmd.Wait() })
 	if _, err := stream.Write(make([]byte, 4*playback.PipeBytes)); !errors.Is(err, os.ErrDeadlineExceeded) {
 		t.Errorf("Write error = %v, want %v", err, os.ErrDeadlineExceeded)
+	}
+}
+
+func TestCommandPlaysStereo(t *testing.T) {
+	args := playback.Command().Args
+	i := slices.Index(args, "--channels")
+	if got := args[i+1]; got != strconv.Itoa(pan.Channels) {
+		t.Errorf("--channels %s, want %d", got, pan.Channels)
 	}
 }

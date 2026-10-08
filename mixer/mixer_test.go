@@ -6,6 +6,7 @@ import (
 
 	"meknik/internal/approx"
 	"meknik/mixer"
+	"meknik/pan"
 	"meknik/synth"
 )
 
@@ -18,6 +19,8 @@ const (
 	loud         = 0.5
 	tolerance    = 1e-3
 	blockSize    = 4
+	hardLeft     = -1.0
+	hardRight    = 1.0
 )
 
 func constant(value float32, frames int, tick bool) mixer.Sound {
@@ -29,11 +32,13 @@ func constant(value float32, frames int, tick bool) mixer.Sound {
 	if tick {
 		cue = synth.Tick
 	}
-	return mixer.Sound{Samples: samples, Cue: cue}
+	return mixer.Sound{Samples: samples, Cue: cue, Pan: hardLeft}
 }
 
+func newBlock() []float32 { return make([]float32, pan.Channels*blockSize) }
+
 func firstFrame(m *mixer.Mixer) float64 {
-	block := make([]float32, blockSize)
+	block := newBlock()
 	m.Fill(block)
 	return float64(block[0])
 }
@@ -76,7 +81,7 @@ func TestFillHoldsBelowCeiling(t *testing.T) {
 func TestFinishedVoiceIsRetired(t *testing.T) {
 	m := mixer.New(unity, wideCeiling)
 	m.Add(constant(quiet, blockSize-1, false))
-	m.Fill(make([]float32, blockSize))
+	m.Fill(newBlock())
 	if got := m.Voices(); got != 0 {
 		t.Errorf("Voices = %d, want 0", got)
 	}
@@ -85,7 +90,7 @@ func TestFinishedVoiceIsRetired(t *testing.T) {
 func TestUnfinishedVoiceContinuesInNextBlock(t *testing.T) {
 	m := mixer.New(unity, wideCeiling)
 	m.Add(constant(quiet, blockSize+1, false))
-	m.Fill(make([]float32, blockSize))
+	m.Fill(newBlock())
 	if got := firstFrame(m); !approx.Equal(quiet, got, tolerance) {
 		t.Errorf("frame = %v, want %v", got, quiet)
 	}
@@ -137,28 +142,58 @@ func TestSetGainChangesLevel(t *testing.T) {
 func TestAddAtDelaysFirstSample(t *testing.T) {
 	m := mixer.New(unity, wideCeiling)
 	m.AddAt(constant(loud, 1, false), 2)
-	block := make([]float32, blockSize)
+	block := newBlock()
 	m.Fill(block)
-	if !approx.Equal(loud, float64(block[2]), tolerance) {
-		t.Errorf("block[2] = %v, want %v", block[2], loud)
+	if !approx.Equal(loud, float64(block[pan.Channels*2]), tolerance) {
+		t.Errorf("frame 2 left = %v, want %v", block[pan.Channels*2], loud)
 	}
 }
 
 func TestAddAtLeavesEarlierFramesSilent(t *testing.T) {
 	m := mixer.New(unity, wideCeiling)
 	m.AddAt(constant(loud, 1, false), 2)
-	block := make([]float32, blockSize)
+	block := newBlock()
 	m.Fill(block)
-	if block[1] != 0 {
-		t.Errorf("block[1] = %v, want 0", block[1])
+	if block[pan.Channels*1] != 0 {
+		t.Errorf("frame 1 left = %v, want 0", block[pan.Channels*1])
 	}
 }
 
 func TestDelayedVoiceContinuesInNextBlock(t *testing.T) {
 	m := mixer.New(unity, wideCeiling)
 	m.AddAt(constant(loud, blockSize, false), blockSize-1)
-	m.Fill(make([]float32, blockSize))
+	m.Fill(newBlock())
 	if got := firstFrame(m); !approx.Equal(loud, got, tolerance) {
 		t.Errorf("next block first frame = %v, want %v", got, loud)
+	}
+}
+
+func TestRightPannedSoundIsLouderOnRight(t *testing.T) {
+	m := mixer.New(unity, wideCeiling)
+	m.Add(mixer.Sound{Samples: []float32{loud}, Pan: pan.Width})
+	block := newBlock()
+	m.Fill(block)
+	if block[1] <= block[0] {
+		t.Errorf("left, right = %v, %v, want right louder", block[0], block[1])
+	}
+}
+
+func TestHardRightSilencesLeft(t *testing.T) {
+	m := mixer.New(unity, wideCeiling)
+	m.Add(mixer.Sound{Samples: []float32{loud}, Pan: hardRight})
+	block := newBlock()
+	m.Fill(block)
+	if math.Abs(float64(block[0])) > tolerance {
+		t.Errorf("left = %v, want 0", block[0])
+	}
+}
+
+func TestSecondFrameFollowsFirstPair(t *testing.T) {
+	m := mixer.New(unity, wideCeiling)
+	m.Add(mixer.Sound{Samples: []float32{quiet, loud}, Pan: hardLeft})
+	block := newBlock()
+	m.Fill(block)
+	if !approx.Equal(loud, float64(block[pan.Channels]), tolerance) {
+		t.Errorf("second frame left = %v, want %v", block[pan.Channels], loud)
 	}
 }
