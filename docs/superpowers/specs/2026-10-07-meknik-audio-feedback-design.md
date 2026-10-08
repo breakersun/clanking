@@ -72,6 +72,25 @@ The `pw-cat` writer is passed to the audio loop as an `io.Writer`.
 Render one cue and write it straight to a fresh `pw-cat`. This is for
 tuning the sounds by ear, and needs no daemon.
 
+### Volume and mute
+
+`meknik mute`, `meknik unmute`, `meknik volume <dB>`, and `meknik status`
+send one request line over a Unix stream socket,
+`$XDG_STATE_HOME/meknik/run/meknik.ctl`, and print the daemon's one-line
+reply, such as `volume -6 dB, muted`. A stream lets the daemon answer on
+the same connection, which also works from a container, where neither
+filesystem nor abstract datagram addresses can be reached back. Volume is
+absolute only; `meknik volume` without a level is a usage error, and a
+level must be finite and at most +24 dB, where limited output reaches
+full scale. Requests are validated before any daemon is contacted. As
+with hooks, a host command starts the daemon when none answers.
+
+The daemon persists the settings to `$XDG_STATE_HOME/meknik/mixer.json`
+(written atomically) and loads them at startup, so mute and volume
+survive restarts; without the file it starts at 0 dB, unmuted. Changes
+reach the audio loop through a channel and take effect within one block.
+Errors from any command are logged and also printed to stderr.
+
 ## Event to cue mapping
 
 | Hook event | Condition | Cue |
@@ -112,8 +131,8 @@ otherwise, the waveform is a sine.
 | `noted` | a light plink; bursts of new tasks patter | one +12 note, 120 ms, quick decay |
 
 Levels: `tick` peaks at −36 dBFS, `reply` and `noted` at −33 dBFS, and the other cues at −30 dBFS.
-`MEKNIK_GAIN` (dB, default 0) in the daemon's environment shifts all
-levels. The mixer stream volume is the only mute control.
+The master volume (dB, default 0) shifts all levels, and mute silences
+everything, including sounds already playing. See "Volume and mute".
 
 ## Mixing and subtlety
 
@@ -121,7 +140,7 @@ levels. The mixer stream volume is the only mute control.
 - When the voice pool is full, a new `tick` is dropped. Any other new
   cue replaces the oldest `tick` voice. If the pool holds no `tick`,
   the new cue is dropped.
-- A soft limiter (tanh curve) holds the mix below −24 dBFS, before `MEKNIK_GAIN` is applied.
+- A soft limiter (tanh curve) holds the mix below −24 dBFS, before the master volume is applied.
 
 ## Package layout
 

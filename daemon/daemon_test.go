@@ -42,7 +42,7 @@ func steppingClock() func() time.Time {
 
 func play(sounds <-chan mixer.Sound) *bytes.Buffer {
 	var out bytes.Buffer
-	_ = daemon.Play(mixer.New(unity, wideCeiling), sounds, &out, idle, steppingClock())
+	_ = daemon.Play(mixer.New(unity, wideCeiling), sounds, make(chan float64), &out, idle, steppingClock())
 	return &out
 }
 
@@ -67,7 +67,7 @@ func TestLockIsFreeAfterRelease(t *testing.T) {
 }
 
 func TestPlayStopsWhenIdle(t *testing.T) {
-	err := daemon.Play(mixer.New(unity, wideCeiling), make(chan mixer.Sound), &bytes.Buffer{}, idle, steppingClock())
+	err := daemon.Play(mixer.New(unity, wideCeiling), make(chan mixer.Sound), make(chan float64), &bytes.Buffer{}, idle, steppingClock())
 	if err != nil {
 		t.Errorf("Play error = %v, want nil", err)
 	}
@@ -89,7 +89,7 @@ func TestPlayWritesQueuedSound(t *testing.T) {
 }
 
 func TestPlayReportsWriteFailure(t *testing.T) {
-	err := daemon.Play(mixer.New(unity, wideCeiling), make(chan mixer.Sound), failingWriter{}, idle, steppingClock())
+	err := daemon.Play(mixer.New(unity, wideCeiling), make(chan mixer.Sound), make(chan float64), failingWriter{}, idle, steppingClock())
 	if !errors.Is(err, errBroken) {
 		t.Errorf("Play error = %v, want %v", err, errBroken)
 	}
@@ -107,7 +107,7 @@ func (w *brokenAfter) Write(p []byte) (int, error) {
 
 func TestPlayWithNeverIdleKeepsPlaying(t *testing.T) {
 	out := &brokenAfter{writes: 100}
-	err := daemon.Play(mixer.New(unity, wideCeiling), make(chan mixer.Sound), out, daemon.NeverIdle, steppingClock())
+	err := daemon.Play(mixer.New(unity, wideCeiling), make(chan mixer.Sound), make(chan float64), out, daemon.NeverIdle, steppingClock())
 	if !errors.Is(err, errBroken) {
 		t.Errorf("Play error = %v, want %v", err, errBroken)
 	}
@@ -119,5 +119,17 @@ func TestLockRefusesSymlink(t *testing.T) {
 	_ = os.Symlink(filepath.Join(dir, "target"), path)
 	if _, _, err := daemon.Lock(path); err == nil {
 		t.Error("Lock error = nil, want an error for a symlinked lock")
+	}
+}
+
+func TestPlayAppliesQueuedGain(t *testing.T) {
+	sounds := make(chan mixer.Sound, 1)
+	sounds <- mixer.Sound{Samples: []float32{sample}}
+	gains := make(chan float64, 1)
+	gains <- 0
+	var out bytes.Buffer
+	_ = daemon.Play(mixer.New(unity, wideCeiling), sounds, gains, &out, idle, steppingClock())
+	if got := math.Float32frombits(binary.LittleEndian.Uint32(out.Bytes())); got != 0 {
+		t.Errorf("first sample = %v, want 0", got)
 	}
 }

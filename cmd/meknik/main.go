@@ -10,10 +10,11 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
-	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
+	"meknik/control"
 	"meknik/daemon"
 	"meknik/hookevent"
 	"meknik/mixer"
@@ -26,10 +27,11 @@ const (
 	appName          = "meknik"
 	socketName       = "meknik.sock"
 	lockName         = "meknik.lock"
+	controlName      = "meknik.ctl"
 	logName          = "meknik.log"
+	settingsName     = "mixer.json"
 	runDirName       = "run"
 	noSpawnFlag      = "--no-spawn"
-	gainEnv          = "MEKNIK_GAIN"
 	idleEnv          = "MEKNIK_IDLE_TIMEOUT"
 	spawnTimeout     = time.Second
 	retryInterval    = 20 * time.Millisecond
@@ -40,7 +42,7 @@ const (
 )
 
 var (
-	errUsage         = errors.New("usage: meknik hook [--no-spawn] | meknik daemon | meknik play <cue>")
+	errUsage         = errors.New("usage: meknik hook [--no-spawn] | daemon | play <cue> | mute | unmute | volume <dB> | status")
 	errSpawnDisabled = errors.New("no daemon is running and spawning is disabled")
 )
 
@@ -53,6 +55,7 @@ func main() {
 	slog.SetDefault(slog.New(slog.NewTextHandler(logFile, nil)))
 	if err := run(os.Args[1:]); err != nil {
 		slog.Error("meknik failed", "args", os.Args[1:], "err", err)
+		fmt.Fprintln(os.Stderr, "meknik:", err)
 		os.Exit(1)
 	}
 }
@@ -67,6 +70,10 @@ func run(args []string) error {
 		return runDaemon()
 	case len(args) == 2 && args[0] == "play":
 		return runPlay(synth.Cue(args[1]))
+	case len(args) == 1 && slices.Contains([]string{control.Mute, control.Unmute, control.Status}, args[0]):
+		return runControl(args[0])
+	case len(args) == 2 && args[0] == control.Volume:
+		return runControl(strings.Join(args, " "))
 	}
 	return errUsage
 }
@@ -80,7 +87,28 @@ func runHook(spawn func() error) error {
 	if err != nil {
 		return err
 	}
-	return transport.Deliver(socket, cue, spawn, spawnTimeout, retryInterval)
+	return transport.Deliver(func() error { return transport.Send(socket, cue) }, spawn, spawnTimeout, retryInterval)
+}
+
+func runControl(line string) error {
+	r, err := control.Parse(line)
+	if err != nil {
+		return err
+	}
+	path, err := runPath(controlName)
+	if err != nil {
+		return err
+	}
+	var status string
+	ask := func() (err error) {
+		status, err = transport.Ask(path, r)
+		return err
+	}
+	if err := transport.Deliver(ask, spawnDaemon, spawnTimeout, retryInterval); err != nil {
+		return err
+	}
+	_, err = fmt.Println(status)
+	return err
 }
 
 func refuseSpawn() error { return errSpawnDisabled }
@@ -122,11 +150,15 @@ func runDaemon() error {
 		return err
 	}
 	defer func() { _ = lock.Close() }()
-	gain, err := parseGain(os.Getenv(gainEnv))
+	idle, err := parseIdle(os.Getenv(idleEnv))
 	if err != nil {
 		return err
 	}
-	idle, err := parseIdle(os.Getenv(idleEnv))
+	settingsPath, err := statePath(settingsName)
+	if err != nil {
+		return err
+	}
+	settings, err := control.Load(settingsPath)
 	if err != nil {
 		return err
 	}
@@ -134,24 +166,41 @@ func runDaemon() error {
 	if err != nil {
 		return err
 	}
+	controlSocket, err := runPath(controlName)
+	if err != nil {
+		return err
+	}
 	conn, err := transport.Listen(socket)
 	if err != nil {
 		return err
 	}
-	stream, err := playback.Start(playback.Command())
+	listener, err := transport.ListenControl(controlSocket)
 	if err != nil {
 		return errors.Join(err, conn.Close(), os.Remove(socket))
 	}
+	stream, err := playback.Start(playback.Command())
+	if err != nil {
+		return errors.Join(err, conn.Close(), os.Remove(socket), listener.Close())
+	}
 	sounds := make(chan mixer.Sound, soundQueue)
+	gains := make(chan float64, soundQueue)
+	controller := control.NewController(settings,
+		func(s control.Settings) error { return control.Save(settingsPath, s) },
+		func(s control.Settings) { gains <- s.Gain() })
 	go func() {
 		if err := transport.Serve(conn, enqueue(sounds, newRNG())); err != nil {
-			slog.Error("socket failed", "err", err)
+			slog.Error("cue socket failed", "err", err)
 		}
 	}()
-	slog.Info("daemon started", "socket", socket, "gain", gain, "idle", idle)
-	playErr := daemon.Play(mixer.New(gain, synth.Amplitude(limiterCeilingDB)), sounds, stream, idle, time.Now)
+	go func() {
+		if err := transport.ServeControl(listener, controller.Handle); err != nil {
+			slog.Error("control socket failed", "err", err)
+		}
+	}()
+	slog.Info("daemon started", "socket", socket, "settings", settings.String(), "idle", idle)
+	playErr := daemon.Play(mixer.New(settings.Gain(), synth.Amplitude(limiterCeilingDB)), sounds, gains, stream, idle, time.Now)
 	slog.Info("daemon stopping")
-	return errors.Join(playErr, conn.Close(), os.Remove(socket), stream.Close())
+	return errors.Join(playErr, conn.Close(), os.Remove(socket), listener.Close(), stream.Close())
 }
 
 func enqueue(sounds chan<- mixer.Sound, rng *rand.Rand) func(synth.Cue) {
@@ -180,14 +229,6 @@ func runPlay(c synth.Cue) error {
 	}
 	_, err = stream.Write(playback.Encode(nil, samples))
 	return errors.Join(err, stream.Close())
-}
-
-func parseGain(db string) (float64, error) {
-	if db == "" {
-		return 1, nil
-	}
-	v, err := strconv.ParseFloat(db, 64)
-	return synth.Amplitude(v), err
 }
 
 func parseIdle(timeout string) (time.Duration, error) {

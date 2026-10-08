@@ -37,13 +37,13 @@ func Lock(path string) (*os.File, bool, error) {
 	return f, true, nil
 }
 
-// Play mixes queued sounds into out block by block until idle passes with no new sound, or forever with NeverIdle.
-func Play(m *mixer.Mixer, sounds <-chan mixer.Sound, out io.Writer, idle time.Duration, now func() time.Time) error {
+// Play mixes queued sounds into out block by block, applying queued gains, until idle passes with no new sound, or forever with NeverIdle.
+func Play(m *mixer.Mixer, sounds <-chan mixer.Sound, gains <-chan float64, out io.Writer, idle time.Duration, now func() time.Time) error {
 	block := make([]float32, BlockFrames)
 	var pcm []byte
 	last := now()
 	for idle == NeverIdle || now().Sub(last) < idle {
-		last = drain(m, sounds, last, now)
+		last = drain(m, sounds, gains, last, now)
 		m.Fill(block)
 		pcm = playback.Encode(pcm[:0], block)
 		if _, err := out.Write(pcm); err != nil {
@@ -53,12 +53,14 @@ func Play(m *mixer.Mixer, sounds <-chan mixer.Sound, out io.Writer, idle time.Du
 	return nil
 }
 
-func drain(m *mixer.Mixer, sounds <-chan mixer.Sound, last time.Time, now func() time.Time) time.Time {
+func drain(m *mixer.Mixer, sounds <-chan mixer.Sound, gains <-chan float64, last time.Time, now func() time.Time) time.Time {
 	for {
 		select {
 		case s := <-sounds:
 			m.Add(s)
 			last = now()
+		case g := <-gains:
+			m.SetGain(g)
 		default:
 			return last
 		}

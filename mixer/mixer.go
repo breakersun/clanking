@@ -60,5 +60,8 @@ func (m *Mixer) Fill(block []float32) {
 	}
 }
 
+// SetGain changes the gain applied after the limiter.
+func (m *Mixer) SetGain(gain float64) { m.gain = gain }
+
 // Voices reports how many sounds are still playing.
 func (m *Mixer) Voices() int { return len(m.voices) }

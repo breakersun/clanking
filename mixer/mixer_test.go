@@ -119,3 +119,12 @@ func TestGainShiftsLevelAboveCeiling(t *testing.T) {
 		t.Errorf("frame = %v, want %v", got, want)
 	}
 }
+
+func TestSetGainChangesLevel(t *testing.T) {
+	m := mixer.New(unity, wideCeiling)
+	m.SetGain(0)
+	m.Add(constant(quiet, blockSize, false))
+	if got := firstFrame(m); got != 0 {
+		t.Errorf("frame = %v, want 0", got)
+	}
+}

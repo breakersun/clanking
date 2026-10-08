@@ -17,12 +17,19 @@ const (
 	sendTimeout = 100 * time.Millisecond
 )
 
-// Listen binds the daemon socket, replacing any stale socket file.
+// Listen binds the daemon's cue socket, replacing any stale socket file.
 func Listen(path string) (*net.UnixConn, error) {
-	if err := os.Remove(path); err != nil && !errors.Is(err, fs.ErrNotExist) {
+	if err := removeStale(path); err != nil {
 		return nil, err
 	}
 	return net.ListenUnixgram(network, &net.UnixAddr{Name: path, Net: network})
+}
+
+func removeStale(path string) error {
+	if err := os.Remove(path); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	return nil
 }
 
 // Serve hands each received cue to play until the connection is closed.
@@ -53,9 +60,9 @@ func Send(path string, c synth.Cue) error {
 	return errors.Join(err, conn.Close())
 }
 
-// Deliver sends a cue; when no daemon answers it spawns one and retries until timeout.
-func Deliver(path string, c synth.Cue, spawn func() error, timeout, interval time.Duration) error {
-	if Send(path, c) == nil {
+// Deliver makes one attempt to reach the daemon; when that fails it spawns one and retries until timeout.
+func Deliver(attempt, spawn func() error, timeout, interval time.Duration) error {
+	if attempt() == nil {
 		return nil
 	}
 	if err := spawn(); err != nil {
@@ -64,7 +71,7 @@ func Deliver(path string, c synth.Cue, spawn func() error, timeout, interval tim
 	deadline := time.Now().Add(timeout)
 	for {
 		time.Sleep(interval)
-		err := Send(path, c)
+		err := attempt()
 		if err == nil || time.Now().After(deadline) {
 			return err
 		}

@@ -6,34 +6,13 @@ import (
 	"testing"
 	"time"
 
+	"meknik/control"
 	"meknik/daemon"
-	"meknik/internal/approx"
 	"meknik/mixer"
 	"meknik/synth"
 )
 
-const (
-	tolerance = 1e-9
-	stallWait = time.Second
-)
-
-func TestParseGainDefaultsToUnity(t *testing.T) {
-	if got, _ := parseGain(""); got != 1 {
-		t.Errorf("parseGain(\"\") = %v, want 1", got)
-	}
-}
-
-func TestParseGainConvertsDecibels(t *testing.T) {
-	if got, _ := parseGain("-6"); !approx.Equal(synth.Amplitude(-6), got, tolerance) {
-		t.Errorf("parseGain(-6) = %v, want %v", got, synth.Amplitude(-6))
-	}
-}
-
-func TestParseGainRejectsGarbage(t *testing.T) {
-	if _, err := parseGain("loud"); err == nil {
-		t.Error("parseGain(loud) error = nil, want an error")
-	}
-}
+const stallWait = time.Second
 
 func TestRunRejectsUnknownCommand(t *testing.T) {
 	if err := run([]string{"bogus"}); !errors.Is(err, errUsage) {
@@ -102,5 +81,17 @@ func TestRunPathLivesInSharedRunDir(t *testing.T) {
 	t.Setenv("XDG_STATE_HOME", "/state")
 	if got, _ := runPath(socketName); got != "/state/meknik/run/meknik.sock" {
 		t.Errorf("runPath = %q, want /state/meknik/run/meknik.sock", got)
+	}
+}
+
+func TestRunRejectsVolumeWithoutLevel(t *testing.T) {
+	if err := run([]string{"volume"}); !errors.Is(err, errUsage) {
+		t.Errorf("run error = %v, want %v", err, errUsage)
+	}
+}
+
+func TestRunRejectsInvalidVolumeBeforeContactingDaemon(t *testing.T) {
+	if err := run([]string{"volume", "loud"}); !errors.Is(err, control.ErrInvalid) {
+		t.Errorf("run error = %v, want %v", err, control.ErrInvalid)
 	}
 }

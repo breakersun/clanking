@@ -46,6 +46,10 @@ func receive(cues <-chan synth.Cue) synth.Cue {
 
 func noSpawn() error { return nil }
 
+func sendCue(path string, c synth.Cue) func() error {
+	return func() error { return transport.Send(path, c) }
+}
+
 func TestSendReachesServer(t *testing.T) {
 	path := socketPath(t)
 	cues := serve(t, path)
@@ -83,7 +87,7 @@ func TestDeliverSkipsSpawnWhenDaemonRuns(t *testing.T) {
 	path := socketPath(t)
 	serve(t, path)
 	spawned := false
-	_ = transport.Deliver(path, synth.Tick, func() error { spawned = true; return nil }, shortTimeout, retryInterval)
+	_ = transport.Deliver(sendCue(path, synth.Tick), func() error { spawned = true; return nil }, shortTimeout, retryInterval)
 	if spawned {
 		t.Error("spawned = true, want false")
 	}
@@ -92,21 +96,21 @@ func TestDeliverSkipsSpawnWhenDaemonRuns(t *testing.T) {
 func TestDeliverSpawnsDaemonAndSends(t *testing.T) {
 	path := socketPath(t)
 	var cues <-chan synth.Cue
-	_ = transport.Deliver(path, synth.Done, func() error { cues = serve(t, path); return nil }, shortTimeout, retryInterval)
+	_ = transport.Deliver(sendCue(path, synth.Done), func() error { cues = serve(t, path); return nil }, shortTimeout, retryInterval)
 	if got := receive(cues); got != synth.Done {
 		t.Errorf("received %q, want %q", got, synth.Done)
 	}
 }
 
 func TestDeliverReportsSpawnFailure(t *testing.T) {
-	err := transport.Deliver(socketPath(t), synth.Done, func() error { return errSpawn }, shortTimeout, retryInterval)
+	err := transport.Deliver(sendCue(socketPath(t), synth.Done), func() error { return errSpawn }, shortTimeout, retryInterval)
 	if !errors.Is(err, errSpawn) {
 		t.Errorf("Deliver error = %v, want %v", err, errSpawn)
 	}
 }
 
 func TestDeliverTimesOutWhenDaemonNeverAppears(t *testing.T) {
-	if err := transport.Deliver(socketPath(t), synth.Done, noSpawn, shortTimeout, retryInterval); err == nil {
+	if err := transport.Deliver(sendCue(socketPath(t), synth.Done), noSpawn, shortTimeout, retryInterval); err == nil {
 		t.Error("Deliver error = nil, want an error")
 	}
 }
