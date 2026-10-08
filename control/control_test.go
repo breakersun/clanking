@@ -12,6 +12,8 @@ import (
 
 const tolerance = 1e-9
 
+const settingsFileMode = 0o600
+
 var errDisk = errors.New("disk full")
 
 func TestParseAcceptsRequests(t *testing.T) {
@@ -146,7 +148,7 @@ func TestLoadWithoutFileGivesDefaults(t *testing.T) {
 
 func TestSaveThenLoadRoundTrips(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "mixer.json")
-	want := control.Settings{VolumeDB: -4.5, Muted: true}
+	want := control.Settings{VolumeDB: -4.5, Muted: true, TempoBPM: control.DefaultTempoBPM}
 	_ = control.Save(path, want)
 	if got, _ := control.Load(path); got != want {
 		t.Errorf("Load = %+v, want %+v", got, want)
@@ -195,5 +197,33 @@ func TestLoadWithoutTempoFieldGivesDefaultTempo(t *testing.T) {
 func TestLoadWithoutFileGivesDefaultTempo(t *testing.T) {
 	if got, _ := control.Load(filepath.Join(t.TempDir(), "mixer.json")); got.TempoBPM != control.DefaultTempoBPM {
 		t.Errorf("TempoBPM = %d, want %d", got.TempoBPM, control.DefaultTempoBPM)
+	}
+}
+
+func loadTempo(t *testing.T, tempo string) int {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "mixer.json")
+	if err := os.WriteFile(path, []byte(`{"tempo_bpm":`+tempo+`}`), settingsFileMode); err != nil {
+		t.Fatal(err)
+	}
+	s, _ := control.Load(path)
+	return s.TempoBPM
+}
+
+func TestLoadClampsSlowTempo(t *testing.T) {
+	if got := loadTempo(t, "0"); got != control.MinTempoBPM {
+		t.Errorf("TempoBPM = %d, want %d", got, control.MinTempoBPM)
+	}
+}
+
+func TestLoadClampsFastTempo(t *testing.T) {
+	if got := loadTempo(t, "999"); got != control.MaxTempoBPM {
+		t.Errorf("TempoBPM = %d, want %d", got, control.MaxTempoBPM)
+	}
+}
+
+func TestLoadKeepsValidTempo(t *testing.T) {
+	if got := loadTempo(t, "90"); got != 90 {
+		t.Errorf("TempoBPM = %d, want 90", got)
 	}
 }

@@ -176,7 +176,7 @@ func (c *Controller) Handle(r Request) (Settings, error) {
 	return next, nil
 }
 
-// Load reads saved settings over the defaults.
+// Load reads saved settings over the defaults, clamping the tempo to its valid range.
 func Load(path string) (Settings, error) {
 	s := Settings{TempoBPM: DefaultTempoBPM}
 	data, err := os.ReadFile(path)
@@ -186,7 +186,11 @@ func Load(path string) (Settings, error) {
 	if err != nil {
 		return s, err
 	}
-	return s, json.Unmarshal(data, &s)
+	if err := json.Unmarshal(data, &s); err != nil {
+		return s, err
+	}
+	s.TempoBPM = min(max(s.TempoBPM, MinTempoBPM), MaxTempoBPM)
+	return s, nil
 }
 
 // Save writes settings atomically.
