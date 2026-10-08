@@ -9,6 +9,9 @@ import (
 // ControlSocket is the name of the daemon's control socket in the run directory.
 const ControlSocket = "meknik.ctl"
 
+// CueSocket is the name of the daemon's cue socket in the run directory.
+const CueSocket = "meknik.sock"
+
 const (
 	appName    = "meknik"
 	runDirName = "run"

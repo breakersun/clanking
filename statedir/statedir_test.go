@@ -38,3 +38,10 @@ func TestOpenLogCreatesStateDir(t *testing.T) {
 		t.Errorf("OpenLog error = %v, want nil", err)
 	}
 }
+
+func TestCueSocketLivesInSharedRunDir(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", "/state")
+	if got, _ := statedir.RunPath(statedir.CueSocket); got != "/state/meknik/run/meknik.sock" {
+		t.Errorf("RunPath = %q, want /state/meknik/run/meknik.sock", got)
+	}
+}

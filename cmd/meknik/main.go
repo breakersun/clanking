@@ -23,7 +23,6 @@ import (
 )
 
 const (
-	socketName       = "meknik.sock"
 	lockName         = "meknik.lock"
 	settingsName     = "mixer.json"
 	noSpawnFlag      = "--no-spawn"
@@ -75,7 +74,7 @@ func runHook(spawn func() error) error {
 	if err != nil || !ok {
 		return err
 	}
-	socket, err := statedir.RunPath(socketName)
+	socket, err := statedir.RunPath(statedir.CueSocket)
 	if err != nil {
 		return err
 	}
@@ -134,7 +133,7 @@ func runDaemon() error {
 	if err != nil {
 		return err
 	}
-	socket, err := statedir.RunPath(socketName)
+	socket, err := statedir.RunPath(statedir.CueSocket)
 	if err != nil {
 		return err
 	}
