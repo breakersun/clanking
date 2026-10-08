@@ -25,5 +25,6 @@ install: build
 	ln -sf $(BIN)/meknik-ui $(HOME)/.local/bin/meknik-ui
 	install -D -m 755 bin/meknik $(HOME)/.local/share/meknik/container-bin/meknik
 	install -d $(APPS)
-	sed 's|@BIN@|$(BIN)|' $(DESKTOP) > $(APPS)/$(DESKTOP)
+	sed 's|@BIN@|$(BIN)|' $(DESKTOP) > $(APPS)/$(DESKTOP).tmp
+	mv $(APPS)/$(DESKTOP).tmp $(APPS)/$(DESKTOP)
 	update-desktop-database $(APPS)
