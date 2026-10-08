@@ -7,11 +7,9 @@ import (
 	"log/slog"
 	"math/rand/v2"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
-	"syscall"
 	"time"
 
 	"meknik/control"
@@ -114,23 +112,7 @@ func spawnDaemon() error {
 	if err != nil {
 		return err
 	}
-	logFile, err := statedir.OpenLog()
-	if err != nil {
-		return err
-	}
-	cmd := daemonCommand(self, logFile)
-	if err := cmd.Start(); err != nil {
-		return errors.Join(err, logFile.Close())
-	}
-	return errors.Join(cmd.Process.Release(), logFile.Close())
-}
-
-func daemonCommand(self string, logFile *os.File) *exec.Cmd {
-	cmd := exec.Command(self, "daemon")
-	cmd.Dir = "/"
-	cmd.Stderr = logFile
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
-	return cmd
+	return daemon.Spawn(self)
 }
 
 func runDaemon() error {
