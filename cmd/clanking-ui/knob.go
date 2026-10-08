@@ -5,6 +5,7 @@ import (
 	"math"
 
 	"github.com/diamondburned/gotk4/pkg/cairo"
+	"github.com/diamondburned/gotk4/pkg/gdk/v4"
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 )
 
@@ -23,15 +24,13 @@ const (
 	knobPointerOuter  = 0.85
 	knobCursor        = "ns-resize"
 	knobLabelFormat   = "%d %s"
-)
-
-type rgb struct{ r, g, b float64 }
-
-var (
-	knobShadow = rgb{0.04, 0.05, 0.06}
-	knobBody   = rgb{0.16, 0.18, 0.21}
-	knobCap    = rgb{0.22, 0.24, 0.28}
-	knobAccent = rgb{1, 0.8, 0.4}
+	knobClass         = "knob"
+	knobCSS           = ".knob { color: @accent_color; }"
+	knobTrackAlpha    = 0.2
+	knobBodyAlpha     = 0.1
+	knobBezelAlpha    = 0.35
+	knobCapAlpha      = 0.08
+	opaque            = 1.0
 )
 
 type knob struct {
@@ -48,6 +47,8 @@ type knob struct {
 func newKnob(minimum, maximum int, unit string, changed func()) *knob {
 	k := &knob{box: gtk.NewBox(gtk.OrientationVertical, 0), area: gtk.NewDrawingArea(), label: gtk.NewLabel(""),
 		unit: unit, min: minimum, max: maximum, changed: changed}
+	addCSS(knobCSS)
+	k.area.AddCSSClass(knobClass)
 	k.area.SetContentWidth(knobSize)
 	k.area.SetContentHeight(knobSize)
 	k.area.SetCursorFromName(knobCursor)
@@ -95,32 +96,38 @@ func (k *knob) dragged(dy float64) int {
 func (k *knob) scrolled(dy float64) int { return k.clamp(k.value - int(math.Round(dy))) }
 
 func (k *knob) draw(_ *gtk.DrawingArea, cr *cairo.Context, width, height int) {
+	drawKnob(cr, width, height, k.angle(), k.box.Color(), k.area.Color())
+}
+
+func drawKnob(cr *cairo.Context, width, height int, angle float64, fg, accent *gdk.RGBA) {
 	cx, cy := float64(width)/2, float64(height)/2
 	track := math.Min(cx, cy) - knobTrackWidth/2
 	body := track - knobTrackWidth/2 - knobTrackGap
 	cr.SetLineCap(cairo.LineCapRound)
 	cr.SetLineWidth(knobTrackWidth)
-	paint(cr, knobShadow)
+	paint(cr, fg, knobTrackAlpha)
 	cr.Arc(cx, cy, track, knobStart, knobStart+knobSweep)
 	cr.Stroke()
-	paint(cr, knobAccent)
-	cr.Arc(cx, cy, track, knobStart, k.angle())
+	paint(cr, accent, opaque)
+	cr.Arc(cx, cy, track, knobStart, angle)
 	cr.Stroke()
 	cr.Arc(cx, cy, body, 0, fullTurn)
-	paint(cr, knobBody)
+	paint(cr, fg, knobBodyAlpha)
 	cr.FillPreserve()
 	cr.SetLineWidth(knobBezelWidth)
-	paint(cr, knobShadow)
+	paint(cr, fg, knobBezelAlpha)
 	cr.Stroke()
 	cr.Arc(cx, cy, body*knobCapRatio, 0, fullTurn)
-	paint(cr, knobCap)
+	paint(cr, fg, knobCapAlpha)
 	cr.Fill()
-	dx, dy := math.Cos(k.angle()), math.Sin(k.angle())
+	dx, dy := math.Cos(angle), math.Sin(angle)
 	cr.SetLineWidth(knobPointerWidth)
-	paint(cr, knobAccent)
+	paint(cr, accent, opaque)
 	cr.MoveTo(cx+dx*body*knobPointerInner, cy+dy*body*knobPointerInner)
 	cr.LineTo(cx+dx*body*knobPointerOuter, cy+dy*body*knobPointerOuter)
 	cr.Stroke()
 }
 
-func paint(cr *cairo.Context, c rgb) { cr.SetSourceRGB(c.r, c.g, c.b) }
+func paint(cr *cairo.Context, c *gdk.RGBA, alpha float64) {
+	cr.SetSourceRGBA(float64(c.Red()), float64(c.Green()), float64(c.Blue()), float64(c.Alpha())*alpha)
+}

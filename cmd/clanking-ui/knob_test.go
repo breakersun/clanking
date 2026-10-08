@@ -49,3 +49,9 @@ func TestKnobScrollClampsAtMinimum(t *testing.T) {
 		t.Errorf("scrolled(1) = %d, want %d", got, knobTestMin)
 	}
 }
+
+func TestKnobCSSColoursKnobWithThemeAccent(t *testing.T) {
+	if want := ".knob { color: @accent_color; }"; knobCSS != want {
+		t.Errorf("knobCSS = %q, want %q", knobCSS, want)
+	}
+}

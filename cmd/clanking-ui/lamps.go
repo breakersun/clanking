@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/diamondburned/gotk4/pkg/core/glib"
-	"github.com/diamondburned/gotk4/pkg/gdk/v4"
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 
 	"github.com/chrchr/clanking/synth"
@@ -60,9 +59,7 @@ func lampCSS() string {
 }
 
 func newLamps() *lamps {
-	provider := gtk.NewCSSProvider()
-	provider.LoadFromString(lampCSS())
-	gtk.StyleContextAddProviderForDisplay(gdk.DisplayGetDefault(), provider, gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+	addCSS(lampCSS())
 	l := &lamps{row: gtk.NewBox(gtk.OrientationHorizontal, lampSpacing), lamp: map[synth.Cue]*gtk.Box{}, pending: map[synth.Cue]glib.SourceHandle{}}
 	l.row.SetHAlign(gtk.AlignCenter)
 	for _, c := range synth.Cues {
