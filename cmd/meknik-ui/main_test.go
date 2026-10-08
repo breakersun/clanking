@@ -39,3 +39,15 @@ func TestDetentKeepsValuesOutsideIt(t *testing.T) {
 		t.Errorf("detent(1.5) = %v, want 1.5", got)
 	}
 }
+
+func TestMuteIconWhenMuted(t *testing.T) {
+	if got := muteIcon(true); got != "audio-volume-muted-symbolic" {
+		t.Errorf("muteIcon(true) = %q, want audio-volume-muted-symbolic", got)
+	}
+}
+
+func TestMuteIconWhenUnmuted(t *testing.T) {
+	if got := muteIcon(false); got != "audio-volume-high-symbolic" {
+		t.Errorf("muteIcon(false) = %q, want audio-volume-high-symbolic", got)
+	}
+}

@@ -5,7 +5,7 @@
 Like a dashboard that lights every lamp when the key turns, a self-test
 plays every meknik cue once, in sequence, so the user hears that the
 whole path works: cue socket, daemon, mixer, and `pw-cat`. It is
-available as `meknik selftest` and as a button in `meknik-ui`.
+available as `meknik selftest`.
 
 Non-goals: a window title bar or an About window (the compositor's
 border-only decoration is intended), changes to the daemon or the
@@ -56,11 +56,9 @@ gains `selftest`.
 
 ## UI
 
-A `Self-test` button below the Mute button. It runs `selftest.Run` on
-its own goroutine, not through the request worker, so that mute and
-volume changes still go through while a test plays. The button is
-insensitive while a test runs and becomes sensitive again when it ends.
-A refusal or other error is logged and shown in the error label.
+`meknik-ui` has no self-test button; it was removed on 2026-10-08 to
+keep the window small. The self-test is a command-line feature only.
+While `meknik selftest` runs, the window's lamps light in sequence.
 
 ## Testing
 
@@ -73,7 +71,3 @@ Unit tests, one assertion each, in `selftest`:
 - A status error is returned as is.
 
 `synth`: `Cues` holds every cue that `Sound` knows, once.
-
-The UI button is checked by hand: press it, hear every cue, and see the
-button disabled until the sequence ends; mute, press it, and see the
-refusal in the error label.

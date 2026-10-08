@@ -16,7 +16,6 @@ import (
 	"meknik/control"
 	"meknik/daemon"
 	"meknik/events"
-	"meknik/selftest"
 	"meknik/statedir"
 	"meknik/transport"
 )
@@ -26,7 +25,8 @@ const (
 	title             = "meknik"
 	daemonBinary      = "meknik"
 	muteLabel         = "Mute"
-	selfTestLabel     = "Self-test"
+	mutedIcon         = "audio-volume-muted-symbolic"
+	unmutedIcon       = "audio-volume-high-symbolic"
 	minVolumeDB       = -60.0
 	volumeStepDB      = 0.5
 	volumeDigits      = 1
@@ -42,10 +42,8 @@ const (
 type panel struct {
 	volume   *gtk.Scale
 	mute     *gtk.ToggleButton
-	selfTest *gtk.Button
 	errors   *gtk.Label
 	requests chan control.Request
-	test     func() error
 	pending  glib.SourceHandle
 	syncing  bool
 	lamps    *lamps
@@ -65,7 +63,7 @@ func main() {
 	}
 	app := gtk.NewApplication(appID, gio.ApplicationDefaultFlags)
 	app.ConnectActivate(func() {
-		p := newPanel(app, askDaemon, func() error { return selftest.RunDaemon(spawnSibling) })
+		p := newPanel(app, askDaemon)
 		go p.watch(eventsPath)
 		p.send(control.Request{Command: control.Status})
 	})
@@ -88,14 +86,12 @@ func spawnSibling() error {
 	return daemon.Spawn(filepath.Join(filepath.Dir(self), daemonBinary))
 }
 
-func newPanel(app *gtk.Application, ask func(control.Request) (control.Settings, error), test func() error) *panel {
+func newPanel(app *gtk.Application, ask func(control.Request) (control.Settings, error)) *panel {
 	p := &panel{
 		volume:   gtk.NewScaleWithRange(gtk.OrientationHorizontal, minVolumeDB, control.MaxVolumeDB, volumeStepDB),
-		mute:     gtk.NewToggleButtonWithLabel(muteLabel),
+		mute:     gtk.NewToggleButton(),
 		errors:   gtk.NewLabel(""),
-		selfTest: gtk.NewButtonWithLabel(selfTestLabel),
 		requests: make(chan control.Request, requestQueue),
-		test:     test,
 		lamps:    newLamps(),
 	}
 	go forward(p.requests, ask, func(s control.Settings, err error) { glib.IdleAdd(func() { p.show(s, err) }) })
@@ -105,17 +101,20 @@ func newPanel(app *gtk.Application, ask func(control.Request) (control.Settings,
 	p.volume.AddMark(0, gtk.PosBottom, zeroMark)
 	p.volume.ConnectChangeValue(p.volumeDragged)
 	p.volume.ConnectValueChanged(p.volumeChanged)
+	p.mute.SetIconName(muteIcon(false))
+	p.mute.SetTooltipText(muteLabel)
+	p.mute.SetVAlign(gtk.AlignCenter)
 	p.mute.ConnectToggled(p.muteToggled)
-	p.selfTest.ConnectClicked(p.runSelfTest)
+	controls := gtk.NewBox(gtk.OrientationHorizontal, spacing)
+	controls.Append(p.mute)
+	controls.Append(p.volume)
 	box := gtk.NewBox(gtk.OrientationVertical, spacing)
 	box.SetMarginTop(windowMargin)
 	box.SetMarginBottom(windowMargin)
 	box.SetMarginStart(windowMargin)
 	box.SetMarginEnd(windowMargin)
 	box.Append(p.lamps.row)
-	box.Append(p.volume)
-	box.Append(p.mute)
-	box.Append(p.selfTest)
+	box.Append(controls)
 	box.Append(p.errors)
 	window := gtk.NewApplicationWindow(app)
 	window.SetTitle(title)
@@ -153,6 +152,7 @@ func (p *panel) volumeChanged() {
 }
 
 func (p *panel) muteToggled() {
+	p.mute.SetIconName(muteIcon(p.mute.Active()))
 	if p.syncing {
 		return
 	}
@@ -163,15 +163,11 @@ func (p *panel) muteToggled() {
 	p.send(control.Request{Command: command})
 }
 
-func (p *panel) runSelfTest() {
-	p.selfTest.SetSensitive(false)
-	go func() {
-		err := p.test()
-		glib.IdleAdd(func() {
-			p.selfTest.SetSensitive(true)
-			p.showError(err)
-		})
-	}()
+func muteIcon(muted bool) string {
+	if muted {
+		return mutedIcon
+	}
+	return unmutedIcon
 }
 
 func (p *panel) send(r control.Request) { p.requests <- r }
