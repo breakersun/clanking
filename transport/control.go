@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	controlNetwork = "unix"
+	streamNetwork  = "unix"
 	controlTimeout = time.Second
 	errorPrefix    = "error: "
 )
@@ -29,12 +29,12 @@ const (
 // ErrDaemon reports a request the daemon could not carry out.
 var ErrDaemon = errors.New("daemon refused request")
 
-// ListenControl binds the daemon's control socket, replacing any stale socket file.
-func ListenControl(path string) (net.Listener, error) {
+// ListenStream binds a daemon stream socket, replacing any stale socket file.
+func ListenStream(path string) (net.Listener, error) {
 	if err := removeStale(path); err != nil {
 		return nil, err
 	}
-	return net.Listen(controlNetwork, path)
+	return net.Listen(streamNetwork, path)
 }
 
 // ServeControl answers each connection's request line with a status line until the listener is closed.
@@ -81,7 +81,7 @@ func respond(line string, handle func(control.Request) (control.Settings, error)
 
 // Ask sends one request to the daemon and returns its status line.
 func Ask(path string, r control.Request) (string, error) {
-	conn, err := net.DialTimeout(controlNetwork, path, controlTimeout)
+	conn, err := net.DialTimeout(streamNetwork, path, controlTimeout)
 	if err != nil {
 		return "", err
 	}

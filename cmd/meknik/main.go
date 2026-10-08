@@ -160,7 +160,7 @@ func runDaemon() error {
 	if err != nil {
 		return err
 	}
-	listener, err := transport.ListenControl(controlSocket)
+	listener, err := transport.ListenStream(controlSocket)
 	if err != nil {
 		return errors.Join(err, conn.Close(), os.Remove(socket))
 	}

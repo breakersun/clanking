@@ -17,7 +17,7 @@ func controlPath(t *testing.T) string { return filepath.Join(t.TempDir(), contro
 
 func serveControl(t *testing.T, path string, handle func(control.Request) (control.Settings, error)) {
 	t.Helper()
-	l, err := transport.ListenControl(path)
+	l, err := transport.ListenStream(path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +51,7 @@ func TestAskWithoutDaemonFails(t *testing.T) {
 }
 
 func TestServeControlReturnsNilWhenClosed(t *testing.T) {
-	l, _ := transport.ListenControl(controlPath(t))
+	l, _ := transport.ListenStream(controlPath(t))
 	_ = l.Close()
 	if err := transport.ServeControl(l, nil); err != nil {
 		t.Errorf("ServeControl error = %v, want nil", err)

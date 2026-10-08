@@ -12,6 +12,9 @@ const ControlSocket = "meknik.ctl"
 // CueSocket is the name of the daemon's cue socket in the run directory.
 const CueSocket = "meknik.sock"
 
+// EventsSocket is the name of the daemon's events socket in the run directory.
+const EventsSocket = "meknik.events"
+
 const (
 	appName    = "meknik"
 	runDirName = "run"

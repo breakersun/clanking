@@ -45,3 +45,10 @@ func TestCueSocketLivesInSharedRunDir(t *testing.T) {
 		t.Errorf("RunPath = %q, want /state/meknik/run/meknik.sock", got)
 	}
 }
+
+func TestEventsSocketLivesInSharedRunDir(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", "/state")
+	if got, _ := statedir.RunPath(statedir.EventsSocket); got != "/state/meknik/run/meknik.events" {
+		t.Errorf("RunPath = %q, want /state/meknik/run/meknik.events", got)
+	}
+}
