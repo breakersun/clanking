@@ -6,6 +6,7 @@ import (
 
 	"meknik/internal/approx"
 	"meknik/mixer"
+	"meknik/synth"
 )
 
 const (
@@ -24,7 +25,11 @@ func constant(value float32, frames int, tick bool) mixer.Sound {
 	for i := range samples {
 		samples[i] = value
 	}
-	return mixer.Sound{Samples: samples, Tick: tick}
+	cue := synth.Done
+	if tick {
+		cue = synth.Tick
+	}
+	return mixer.Sound{Samples: samples, Cue: cue}
 }
 
 func firstFrame(m *mixer.Mixer) float64 {
@@ -126,5 +131,34 @@ func TestSetGainChangesLevel(t *testing.T) {
 	m.Add(constant(quiet, blockSize, false))
 	if got := firstFrame(m); got != 0 {
 		t.Errorf("frame = %v, want 0", got)
+	}
+}
+
+func TestAddAtDelaysFirstSample(t *testing.T) {
+	m := mixer.New(unity, wideCeiling)
+	m.AddAt(constant(loud, 1, false), 2)
+	block := make([]float32, blockSize)
+	m.Fill(block)
+	if !approx.Equal(loud, float64(block[2]), tolerance) {
+		t.Errorf("block[2] = %v, want %v", block[2], loud)
+	}
+}
+
+func TestAddAtLeavesEarlierFramesSilent(t *testing.T) {
+	m := mixer.New(unity, wideCeiling)
+	m.AddAt(constant(loud, 1, false), 2)
+	block := make([]float32, blockSize)
+	m.Fill(block)
+	if block[1] != 0 {
+		t.Errorf("block[1] = %v, want 0", block[1])
+	}
+}
+
+func TestDelayedVoiceContinuesInNextBlock(t *testing.T) {
+	m := mixer.New(unity, wideCeiling)
+	m.AddAt(constant(loud, blockSize, false), blockSize-1)
+	m.Fill(make([]float32, blockSize))
+	if got := firstFrame(m); !approx.Equal(loud, got, tolerance) {
+		t.Errorf("next block first frame = %v, want %v", got, loud)
 	}
 }

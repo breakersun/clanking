@@ -4,6 +4,8 @@ package mixer
 import (
 	"math"
 	"slices"
+
+	"meknik/synth"
 )
 
 // MaxVoices caps how many sounds play at once.
@@ -12,8 +14,10 @@ const MaxVoices = 8
 // Sound is a rendered cue queued for playback.
 type Sound struct {
 	Samples []float32
-	Tick    bool
+	Cue     synth.Cue
 }
+
+func (s Sound) tick() bool { return s.Cue == synth.Tick }
 
 type voice struct {
 	Sound
@@ -30,17 +34,20 @@ type Mixer struct {
 // New returns a mixer that applies gain after a tanh limiter held below ceiling, so gain shifts every level.
 func New(gain, ceiling float64) *Mixer { return &Mixer{gain: gain, ceiling: ceiling} }
 
-// Add starts a sound; when the pool is full a tick is dropped and a cue replaces the oldest tick.
-func (m *Mixer) Add(s Sound) {
+// Add starts a sound now.
+func (m *Mixer) Add(s Sound) { m.AddAt(s, 0) }
+
+// AddAt starts a sound offset frames into the next block; when the pool is full a tick is dropped and a cue replaces the oldest tick.
+func (m *Mixer) AddAt(s Sound, offset int) {
 	if len(m.voices) < MaxVoices {
-		m.voices = append(m.voices, &voice{Sound: s})
+		m.voices = append(m.voices, &voice{Sound: s, pos: -offset})
 		return
 	}
-	if s.Tick {
+	if s.tick() {
 		return
 	}
-	if i := slices.IndexFunc(m.voices, func(v *voice) bool { return v.Tick }); i >= 0 {
-		m.voices = append(slices.Delete(m.voices, i, i+1), &voice{Sound: s})
+	if i := slices.IndexFunc(m.voices, func(v *voice) bool { return v.tick() }); i >= 0 {
+		m.voices = append(slices.Delete(m.voices, i, i+1), &voice{Sound: s, pos: -offset})
 	}
 }
 
@@ -48,13 +55,14 @@ func (m *Mixer) Add(s Sound) {
 func (m *Mixer) Fill(block []float32) {
 	clear(block)
 	for _, v := range m.voices {
-		n := min(len(block), len(v.Samples)-v.pos)
-		for i := range n {
-			block[i] += v.Samples[v.pos+i]
+		for i := range block {
+			if j := v.pos + i; j >= 0 && j < len(v.Samples) {
+				block[i] += v.Samples[j]
+			}
 		}
-		v.pos += n
+		v.pos += len(block)
 	}
-	m.voices = slices.DeleteFunc(m.voices, func(v *voice) bool { return v.pos == len(v.Samples) })
+	m.voices = slices.DeleteFunc(m.voices, func(v *voice) bool { return v.pos >= len(v.Samples) })
 	for i, x := range block {
 		block[i] = float32(m.gain * m.ceiling * math.Tanh(float64(x)/m.ceiling))
 	}

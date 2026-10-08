@@ -216,7 +216,7 @@ func enqueue(sounds chan<- mixer.Sound, rng *rand.Rand, publish func(string)) fu
 			return
 		}
 		select {
-		case sounds <- mixer.Sound{Samples: samples, Tick: c == synth.Tick}:
+		case sounds <- mixer.Sound{Samples: samples, Cue: c}:
 			publish(events.CueLine(c))
 		default:
 			slog.Warn("sound queue full, cue dropped", "cue", c)
