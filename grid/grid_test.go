@@ -103,3 +103,39 @@ func TestSoundDueAfterTheBlockIsNotReturned(t *testing.T) {
 		t.Errorf("Due = %+v, want nothing before the next line", got)
 	}
 }
+
+func TestNewSchedulerReportsEmptySixteenths(t *testing.T) {
+	if got, want := grid.New().State(), (grid.State{Division: 16}); got != want {
+		t.Errorf("State = %+v, want %+v", got, want)
+	}
+}
+
+func TestStateCountsQueuedSounds(t *testing.T) {
+	s := grid.New()
+	offers(s, 3)
+	if got := s.State().Queued; got != 3 {
+		t.Errorf("Queued = %d, want 3", got)
+	}
+}
+
+func TestStateCountsDroppedSounds(t *testing.T) {
+	s := grid.New()
+	offers(s, queueLimit+2)
+	if got := s.State().Dropped; got != 2 {
+		t.Errorf("Dropped = %d, want 2", got)
+	}
+}
+
+func TestStateReportsThirtySecondsAfterThirdDrop(t *testing.T) {
+	s := grid.New()
+	offers(s, queueLimit+3)
+	if got := s.State().Division; got != 32 {
+		t.Errorf("Division = %d, want 32", got)
+	}
+}
+
+func TestStateString(t *testing.T) {
+	if got, want := (grid.State{Division: 32, Queued: 3, Dropped: 41}).String(), "120 bpm in 32nds, 3 queued, 41 dropped"; got != want {
+		t.Errorf("String = %q, want %q", got, want)
+	}
+}
