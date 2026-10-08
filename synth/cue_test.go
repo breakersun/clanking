@@ -138,8 +138,8 @@ func TestTickSitsBelowCues(t *testing.T) {
 	}
 }
 
-func TestCuesListsEveryCueInOrder(t *testing.T) {
-	want := []synth.Cue{synth.Tick, synth.Spawn, synth.Return, synth.Done, synth.Failed, synth.Permission, synth.Ask, synth.Reply, synth.Milestone, synth.Noted}
+func TestCuesListsEveryCueEndingOnDone(t *testing.T) {
+	want := []synth.Cue{synth.Tick, synth.Spawn, synth.Return, synth.Failed, synth.Permission, synth.Ask, synth.Reply, synth.Milestone, synth.Noted, synth.Done}
 	if !slices.Equal(synth.Cues, want) {
 		t.Errorf("Cues = %v, want %v", synth.Cues, want)
 	}

@@ -24,9 +24,10 @@ control protocol.
    heard alone. The length is the synthesized sample count divided by
    `synth.SampleRate`.
 
-The cue order is the order of the `synth` cue constants: tick, spawn,
-return, done, failed, permission, ask, reply, milestone, noted.
-`synth.Cues` is a new exported slice in that order.
+The cue order is tick, spawn, return, failed, permission, ask, reply,
+milestone, noted, done. The sequence ends on `done`, the completion
+chord, so the test closes on a "complete" sound. `synth.Cues` is a new
+exported slice in that order.
 
 Muting during a test silences the remaining cues at once, because the
 daemon's mixer applies mute to every cue. The test does not check mute

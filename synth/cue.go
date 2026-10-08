@@ -22,8 +22,8 @@ const (
 	Noted      Cue = "noted"
 )
 
-// Cues lists every cue in self-test order.
-var Cues = []Cue{Tick, Spawn, Return, Done, Failed, Permission, Ask, Reply, Milestone, Noted}
+// Cues lists every cue in self-test order, ending on Done.
+var Cues = []Cue{Tick, Spawn, Return, Failed, Permission, Ask, Reply, Milestone, Noted, Done}
 
 // Peak levels in dBFS, with the random level spread applied to ticks.
 const (

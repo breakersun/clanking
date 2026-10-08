@@ -38,7 +38,7 @@ func TestRunSendsCuesInOrder(t *testing.T) {
 func TestRunWaitsForEachCueAndAPause(t *testing.T) {
 	var waits []time.Duration
 	_ = selftest.Run(unmuted, record(new([]synth.Cue)), func(d time.Duration) { waits = append(waits, d) })
-	samples, _ := synth.Sound(synth.Noted, rand.New(rand.NewPCG(1, 2)))
+	samples, _ := synth.Sound(synth.Cues[len(synth.Cues)-1], rand.New(rand.NewPCG(1, 2)))
 	if want := time.Duration(len(samples))*time.Second/synth.SampleRate + cuePause; waits[len(waits)-1] != want {
 		t.Errorf("last wait = %v, want %v", waits[len(waits)-1], want)
 	}

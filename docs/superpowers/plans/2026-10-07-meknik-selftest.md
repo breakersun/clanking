@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Mute is always honored: while muted, the self-test returns `selftest.ErrMuted` ("muted; unmute to run the self-test") and sends no cue.
-- Cue order is `synth.Cues`: tick, spawn, return, done, failed, permission, ask, reply, milestone, noted.
+- Cue order is `synth.Cues`: tick, spawn, return, failed, permission, ask, reply, milestone, noted, done.
 - Wait after each cue = the cue's sample count / `synth.SampleRate` + `cuePause` (400 ms).
 - Cues go over the cue socket with `transport.Send`, the hook path.
 - No title bar, no About window, no daemon or protocol change.
