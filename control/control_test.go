@@ -150,3 +150,27 @@ func TestSaveThenLoadRoundTrips(t *testing.T) {
 		t.Errorf("Load = %+v, want %+v", got, want)
 	}
 }
+
+func TestParseSettingsReadsStatusLine(t *testing.T) {
+	want := control.Settings{VolumeDB: -7.5, Muted: true}
+	if got, _ := control.ParseSettings(want.String()); got != want {
+		t.Errorf("ParseSettings(String()) = %+v, want %+v", got, want)
+	}
+}
+
+func TestParseSettingsReadsUnmuted(t *testing.T) {
+	want := control.Settings{VolumeDB: 24}
+	if got, _ := control.ParseSettings(want.String()); got != want {
+		t.Errorf("ParseSettings(String()) = %+v, want %+v", got, want)
+	}
+}
+
+func TestParseSettingsRejectsMalformedLines(t *testing.T) {
+	for _, line := range []string{"", "volume -6 dB", "volume loud dB, muted", "volume -6 dB, quiet", "loudness -6 dB, muted"} {
+		t.Run(line, func(t *testing.T) {
+			if _, err := control.ParseSettings(line); !errors.Is(err, control.ErrStatus) {
+				t.Errorf("ParseSettings(%q) error = %v, want %v", line, err, control.ErrStatus)
+			}
+		})
+	}
+}

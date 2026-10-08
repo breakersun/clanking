@@ -28,10 +28,18 @@ const (
 // MaxVolumeDB is the loudest volume, where limited output reaches full scale.
 const MaxVolumeDB = 24.0
 
-const settingsMode = 0o644
+const (
+	settingsMode = 0o644
+	mutedState   = "muted"
+	unmutedState = "unmuted"
+	statusFormat = "volume %g dB, %s"
+)
 
 // ErrInvalid reports a malformed control request.
 var ErrInvalid = errors.New("invalid control request")
+
+// ErrStatus reports a status line that ParseSettings cannot read.
+var ErrStatus = errors.New("invalid status line")
 
 // Settings is the daemon's master volume and mute state.
 type Settings struct {
@@ -93,11 +101,23 @@ func (s Settings) Gain() float64 {
 
 // String reports the settings as one status line.
 func (s Settings) String() string {
-	state := "unmuted"
+	state := unmutedState
 	if s.Muted {
-		state = "muted"
+		state = mutedState
 	}
-	return fmt.Sprintf("volume %g dB, %s", s.VolumeDB, state)
+	return fmt.Sprintf(statusFormat, s.VolumeDB, state)
+}
+
+// ParseSettings reads a status line written by Settings.String.
+func ParseSettings(line string) (Settings, error) {
+	var s Settings
+	var state string
+	_, err := fmt.Sscanf(line, statusFormat, &s.VolumeDB, &state)
+	if err != nil || !slices.Contains([]string{mutedState, unmutedState}, state) {
+		return Settings{}, fmt.Errorf("%w: %q", ErrStatus, line)
+	}
+	s.Muted = state == mutedState
+	return s, nil
 }
 
 // Controller serializes requests, persisting and applying each change.
