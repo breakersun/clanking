@@ -127,7 +127,7 @@ otherwise, the waveform is a sine.
 | `done` | settled, resolved | +7, +4, 0, 90 ms apart, each ringing about 200 ms |
 | `failed` | wrong, but not an alarm | −6 then −12, 150 ms each, with added 3rd and 5th harmonics for a buzzier timbre |
 | `permission` | a knock, then tension | +5, +5 at 60 ms each, then +11 held 250 ms, unresolved |
-| `ask` | a spoken "hm?" | one tone gliding from 0 to +7 over 250 ms |
+| `ask` | a doorbell asking a question | two ringing bells a fourth apart, 0 then +5 (I then IV), 110 ms apart and overlapping, 310 ms in all |
 | `reply` | a console "bee-boop": thinking is over | +19 then +24, 25 ms each |
 | `milestone` | a step finished: the rising mirror of `done` | 0, +4, +7 at 45 ms each, then +12 ringing about 200 ms |
 | `noted` | a light plink; bursts of new tasks patter | one +12 note, 120 ms, quick decay |

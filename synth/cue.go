@@ -47,7 +47,7 @@ const (
 	buzzNote   = 150 * time.Millisecond
 	knock      = 60 * time.Millisecond
 	hang       = 250 * time.Millisecond
-	glide      = 250 * time.Millisecond
+	bellGap    = 110 * time.Millisecond
 	blip       = 25 * time.Millisecond
 	climb      = 45 * time.Millisecond
 	plink      = 120 * time.Millisecond
@@ -68,7 +68,7 @@ var scores = map[Cue]score{
 		{From: -12, To: -12, Onset: buzzNote, Length: buzzNote, Decay: sustain, Timbre: Buzzy},
 	}},
 	Permission: {CuePeakDB, []Note{held(5, 0, knock), held(5, knock, knock), held(11, 2*knock, hang)}},
-	Ask:        {CuePeakDB, []Note{{From: 0, To: 7, Length: glide, Decay: sustain, Timbre: Sine}}},
+	Ask:        {CuePeakDB, []Note{rung(0, 0), rung(5, bellGap)}},
 	Reply:      {ReplyPeakDB, []Note{held(19, 0, blip), held(24, blip, blip)}},
 	Milestone:  {CuePeakDB, []Note{held(0, 0, climb), held(4, climb, climb), held(7, 2*climb, climb), rung(12, 3*climb)}},
 	Noted:      {ReplyPeakDB, []Note{{From: 12, To: 12, Length: plink, Decay: plinkDecay, Timbre: Sine}}},

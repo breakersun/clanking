@@ -31,7 +31,7 @@ func sound(t *testing.T, c synth.Cue) []float32 {
 func TestCueDurations(t *testing.T) {
 	want := map[synth.Cue]int{
 		synth.Tick: ms(12), synth.Spawn: ms(80), synth.Return: ms(80), synth.Done: ms(380),
-		synth.Failed: ms(300), synth.Permission: ms(370), synth.Ask: ms(250), synth.Reply: ms(50), synth.Milestone: ms(335), synth.Noted: ms(120),
+		synth.Failed: ms(300), synth.Permission: ms(370), synth.Ask: ms(310), synth.Reply: ms(50), synth.Milestone: ms(335), synth.Noted: ms(120),
 	}
 	for c, frames := range want {
 		t.Run(string(c), func(t *testing.T) {
@@ -137,6 +137,7 @@ func TestCueFinalPitch(t *testing.T) {
 		{synth.Reply, 28, 48, 24},
 		{synth.Milestone, 145, 300, 12},
 		{synth.Noted, 10, 60, 12},
+		{synth.Ask, 210, 300, 5},
 	}
 	for _, tc := range cases {
 		t.Run(string(tc.cue), func(t *testing.T) {
