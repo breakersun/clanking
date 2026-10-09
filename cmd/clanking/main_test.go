@@ -84,7 +84,9 @@ func TestUsageListsSelftest(t *testing.T) {
 }
 
 func TestPlayUsageListsEveryCue(t *testing.T) {
-	want := "usage: clanking play <cue>\ncues: tick spawn return failed permission ask reply milestone noted done"
+	want := "usage: clanking play <cue>\ncues: tick spawn return failed permission ask reply milestone noted done\n" +
+		"theme: dialog-warning bell alarm-clock-elapsed trash-empty service-login service-logout suspend-error phone-incoming-call phone-outgoing-calling phone-outgoing-busy audio-volume-change camera-shutter screen-capture network-connectivity-established network-connectivity-lost power-plug power-unplug battery-low\n" +
+		"aliases: complete device-added device-removed dialog-error dialog-information dialog-question message message-new-instant window-attention"
 	if got := playUsage(); got != want {
 		t.Errorf("playUsage = %q, want %q", got, want)
 	}
@@ -137,6 +139,20 @@ func TestEnqueueRendersAtTheCurrentRoot(t *testing.T) {
 	want, _ := synth.Sound(synth.Done, control.MinRootNote, newRNG())
 	if got := (<-sounds).Samples; !slices.Equal(got, want) {
 		t.Error("enqueued samples differ from Done rendered at the current root")
+	}
+}
+
+func TestEnqueuePlaysAnAliasAsItsTarget(t *testing.T) {
+	sounds := make(chan mixer.Sound, 1)
+	enqueue(sounds, newRNG(), defaultRoot)("complete", "")
+	var got synth.Cue
+	select {
+	case snd := <-sounds:
+		got = snd.Cue
+	default:
+	}
+	if got != synth.Done {
+		t.Errorf("Cue = %q, want %q", got, synth.Done)
 	}
 }
 

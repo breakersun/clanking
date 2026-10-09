@@ -82,11 +82,15 @@ func run(args []string) error {
 }
 
 func playUsage() string {
-	names := make([]string, len(synth.Cues))
-	for i, c := range synth.Cues {
+	return "usage: clanking play <cue>\ncues: " + cueList(synth.Cues) + "\ntheme: " + cueList(synth.ThemeCues) + "\naliases: " + cueList(synth.Aliases())
+}
+
+func cueList(cues []synth.Cue) string {
+	names := make([]string, len(cues))
+	for i, c := range cues {
 		names[i] = string(c)
 	}
-	return "usage: clanking play <cue>\ncues: " + strings.Join(names, " ")
+	return strings.Join(names, " ")
 }
 
 func runHook(spawn func() error) error {
@@ -223,7 +227,8 @@ func runDaemon() error {
 }
 
 func enqueue(sounds chan<- mixer.Sound, rng *rand.Rand, root func() int) func(synth.Cue, string) {
-	return func(c synth.Cue, cwd string) {
+	return func(name synth.Cue, cwd string) {
+		c := synth.Canonical(name)
 		samples, ok := synth.Sound(c, root(), rng)
 		if !ok {
 			slog.Warn("unknown cue", "cue", c)
@@ -242,7 +247,7 @@ func announce(publish func(string)) func(mixer.Sound) {
 }
 
 func runPlay(c synth.Cue) error {
-	if !slices.Contains(synth.Cues, c) {
+	if !synth.Known(c) {
 		return fmt.Errorf("%w %q", errUnknownCue, c)
 	}
 	return sendCue(c, "", spawnDaemon)

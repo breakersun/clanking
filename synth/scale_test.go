@@ -1,6 +1,7 @@
 package synth
 
 import (
+	"maps"
 	"math"
 	"slices"
 	"testing"
@@ -14,7 +15,7 @@ func inMajorScale(semitones float64) bool {
 
 func scoredPitches() []float64 {
 	pitches := slices.Clone(tickNotes)
-	for _, s := range scores {
+	for _, s := range slices.Concat(slices.Collect(maps.Values(scores)), slices.Collect(maps.Values(themeScores))) {
 		for _, n := range s.notes {
 			pitches = append(pitches, n.From, n.To)
 		}

@@ -60,13 +60,10 @@ type score struct {
 }
 
 var scores = map[Cue]score{
-	Spawn:  {CuePeakDB, []Note{held(12, 0, bloop), held(19, bloop, bloop)}},
-	Return: {CuePeakDB, []Note{held(19, 0, bloop), held(12, bloop, bloop)}},
-	Done:   {CuePeakDB, []Note{rung(7, 0), rung(4, cadenceGap), rung(0, 2*cadenceGap)}},
-	Failed: {CuePeakDB, []Note{
-		{From: -5, To: -5, Length: buzzNote, Decay: sustain, Timbre: Buzzy},
-		{From: -12, To: -12, Onset: buzzNote, Length: buzzNote, Decay: sustain, Timbre: Buzzy},
-	}},
+	Spawn:      {CuePeakDB, []Note{held(12, 0, bloop), held(19, bloop, bloop)}},
+	Return:     {CuePeakDB, []Note{held(19, 0, bloop), held(12, bloop, bloop)}},
+	Done:       {CuePeakDB, []Note{rung(7, 0), rung(4, cadenceGap), rung(0, 2*cadenceGap)}},
+	Failed:     {CuePeakDB, []Note{buzz(-5, 0, buzzNote), buzz(-12, buzzNote, buzzNote)}},
 	Permission: {CuePeakDB, []Note{held(5, 0, knock), held(5, knock, knock), held(11, 2*knock, hang)}},
 	Ask:        {CuePeakDB, []Note{rung(0, 0), rung(5, bellGap)}},
 	Reply:      {ReplyPeakDB, []Note{held(19, 0, blip), held(24, blip, blip)}},
@@ -80,6 +77,9 @@ func Sound(c Cue, root int, rng *rand.Rand) ([]float32, bool) {
 		return tick(root, rng), true
 	}
 	s, ok := scores[c]
+	if !ok {
+		s, ok = themeScores[c]
+	}
 	if !ok {
 		return nil, false
 	}
