@@ -23,8 +23,8 @@ func TestRunRejectsUnknownCommand(t *testing.T) {
 }
 
 func TestPlayRejectsUnknownCue(t *testing.T) {
-	if err := run([]string{"play", "bogus"}); err == nil {
-		t.Error("play bogus error = nil, want an error")
+	if err := run([]string{"play", "bogus"}); !errors.Is(err, errUnknownCue) {
+		t.Errorf("play bogus error = %v, want %v", err, errUnknownCue)
 	}
 }
 

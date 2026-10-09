@@ -41,6 +41,7 @@ const (
 var (
 	errUsage         = errors.New("usage: clanking hook [--no-spawn] | daemon | play <cue> | mute | unmute | toggle | volume <dB> | tempo <bpm> | root <midi> | status | selftest")
 	errSpawnDisabled = errors.New("no daemon is running and spawning is disabled")
+	errUnknownCue    = errors.New("unknown cue")
 )
 
 func main() {
@@ -93,11 +94,15 @@ func runHook(spawn func() error) error {
 	if err != nil || !ok {
 		return err
 	}
+	return sendCue(ev.Cue, ev.Cwd, spawn)
+}
+
+func sendCue(c synth.Cue, cwd string, spawn func() error) error {
 	socket, err := statedir.RunPath(statedir.CueSocket)
 	if err != nil {
 		return err
 	}
-	return transport.Deliver(func() error { return transport.Send(socket, ev.Cue, ev.Cwd) }, spawn, transport.SpawnTimeout, transport.RetryInterval)
+	return transport.Deliver(func() error { return transport.Send(socket, c, cwd) }, spawn, transport.SpawnTimeout, transport.RetryInterval)
 }
 
 func runControl(line string) error {
@@ -148,7 +153,11 @@ func runDaemon() error {
 	if err != nil {
 		return err
 	}
-	settingsPath, settings, err := loadSettings()
+	settingsPath, err := statedir.Path(settingsName)
+	if err != nil {
+		return err
+	}
+	settings, err := control.Load(settingsPath)
 	if err != nil {
 		return err
 	}
@@ -213,15 +222,6 @@ func runDaemon() error {
 	return errors.Join(playErr, conn.Close(), os.Remove(socket), listener.Close(), eventsListener.Close(), stream.Close())
 }
 
-func loadSettings() (string, control.Settings, error) {
-	path, err := statedir.Path(settingsName)
-	if err != nil {
-		return "", control.Settings{}, err
-	}
-	s, err := control.Load(path)
-	return path, s, err
-}
-
 func enqueue(sounds chan<- mixer.Sound, rng *rand.Rand, root func() int) func(synth.Cue, string) {
 	return func(c synth.Cue, cwd string) {
 		samples, ok := synth.Sound(c, root(), rng)
@@ -242,20 +242,10 @@ func announce(publish func(string)) func(mixer.Sound) {
 }
 
 func runPlay(c synth.Cue) error {
-	_, settings, err := loadSettings()
-	if err != nil {
-		return err
+	if !slices.Contains(synth.Cues, c) {
+		return fmt.Errorf("%w %q", errUnknownCue, c)
 	}
-	samples, ok := synth.Sound(c, settings.RootNote, newRNG())
-	if !ok {
-		return fmt.Errorf("unknown cue %q", c)
-	}
-	stream, err := playback.Start(playback.Command())
-	if err != nil {
-		return err
-	}
-	_, err = stream.Write(playback.Encode(nil, pan.Interleave(samples, 0)))
-	return errors.Join(err, stream.Close())
+	return sendCue(c, "", spawnDaemon)
 }
 
 func parseIdle(timeout string) (time.Duration, error) {
