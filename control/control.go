@@ -1,4 +1,4 @@
-// Package control holds the daemon's persistent mute and volume settings and the requests that change them.
+// Package control holds the daemon's persistent settings and the requests that change them.
 package control
 
 import (
@@ -24,6 +24,7 @@ const (
 	Status = "status"
 	Toggle = "toggle"
 	Tempo  = "tempo"
+	Root   = "root"
 )
 
 // The tempo range in beats per minute, and the tempo before any is set.
@@ -49,8 +50,9 @@ const (
 	unmutedState  = "unmuted"
 	volumeFormat  = "volume %g dB"
 	tempoFormat   = "%d bpm"
+	rootPrefix    = Root + " "
 	partSeparator = ", "
-	statusParts   = 3
+	statusParts   = 4
 )
 
 // ErrInvalid reports a malformed control request.
@@ -59,11 +61,12 @@ var ErrInvalid = errors.New("invalid control request")
 // ErrStatus reports a status line that ParseSettings cannot read.
 var ErrStatus = errors.New("invalid status line")
 
-// Settings is the daemon's master volume and mute state.
+// Settings is the daemon's master volume, mute state, tempo, and root MIDI note.
 type Settings struct {
 	VolumeDB float64 `json:"volume_db"`
 	Muted    bool    `json:"muted"`
 	TempoBPM int     `json:"tempo_bpm"`
+	RootNote int     `json:"root_note"`
 }
 
 // Request is one parsed control command.
@@ -71,6 +74,7 @@ type Request struct {
 	Command  string
 	VolumeDB float64
 	TempoBPM int
+	RootNote int
 }
 
 // Parse reads one request line.
@@ -85,12 +89,20 @@ func Parse(line string) (Request, error) {
 			return Request{Command: Volume, VolumeDB: db}, nil
 		}
 	case len(fields) == 2 && fields[0] == Tempo:
-		bpm, err := strconv.Atoi(fields[1])
-		if err == nil && bpm >= MinTempoBPM && bpm <= MaxTempoBPM {
+		if bpm, ok := intWithin(fields[1], MinTempoBPM, MaxTempoBPM); ok {
 			return Request{Command: Tempo, TempoBPM: bpm}, nil
+		}
+	case len(fields) == 2 && fields[0] == Root:
+		if note, ok := intWithin(fields[1], MinRootNote, MaxRootNote); ok {
+			return Request{Command: Root, RootNote: note}, nil
 		}
 	}
 	return Request{}, fmt.Errorf("%w: %q", ErrInvalid, strings.TrimSpace(line))
+}
+
+func intWithin(text string, low, high int) (int, bool) {
+	n, err := strconv.Atoi(text)
+	return n, err == nil && n >= low && n <= high
 }
 
 // String renders the request as one protocol line.
@@ -100,6 +112,8 @@ func (r Request) String() string {
 		return fmt.Sprintf("%s %g", Volume, r.VolumeDB)
 	case Tempo:
 		return fmt.Sprintf("%s %d", Tempo, r.TempoBPM)
+	case Root:
+		return fmt.Sprintf("%s %d", Root, r.RootNote)
 	}
 	return r.Command
 }
@@ -117,6 +131,8 @@ func (s Settings) Apply(r Request) Settings {
 		s.VolumeDB = r.VolumeDB
 	case Tempo:
 		s.TempoBPM = r.TempoBPM
+	case Root:
+		s.RootNote = r.RootNote
 	}
 	return s
 }
@@ -135,7 +151,7 @@ func (s Settings) String() string {
 	if s.Muted {
 		state = mutedState
 	}
-	return strings.Join([]string{fmt.Sprintf(volumeFormat, s.VolumeDB), state, fmt.Sprintf(tempoFormat, s.TempoBPM)}, partSeparator)
+	return strings.Join([]string{fmt.Sprintf(volumeFormat, s.VolumeDB), state, rootPrefix + synth.NoteName(s.RootNote), fmt.Sprintf(tempoFormat, s.TempoBPM)}, partSeparator)
 }
 
 // ParseSettings reads a status line written by Settings.String.
@@ -146,10 +162,13 @@ func ParseSettings(line string) (Settings, error) {
 		return Settings{}, fmt.Errorf("%w: %q", ErrStatus, line)
 	}
 	_, volumeErr := fmt.Sscanf(parts[0], volumeFormat, &s.VolumeDB)
-	_, tempoErr := fmt.Sscanf(parts[2], tempoFormat, &s.TempoBPM)
-	if volumeErr != nil || tempoErr != nil {
+	_, tempoErr := fmt.Sscanf(parts[3], tempoFormat, &s.TempoBPM)
+	rootName, hasRoot := strings.CutPrefix(parts[2], rootPrefix)
+	root, rootOK := synth.ParseNoteName(rootName)
+	if volumeErr != nil || tempoErr != nil || !hasRoot || !rootOK {
 		return Settings{}, fmt.Errorf("%w: %q", ErrStatus, line)
 	}
+	s.RootNote = root
 	s.Muted = parts[1] == mutedState
 	return s, nil
 }
@@ -183,9 +202,9 @@ func (c *Controller) Handle(r Request) (Settings, error) {
 	return next, nil
 }
 
-// Load reads saved settings over the defaults, clamping the tempo to its valid range.
+// Load reads saved settings over the defaults, clamping the tempo and root to their valid ranges.
 func Load(path string) (Settings, error) {
-	s := Settings{TempoBPM: DefaultTempoBPM}
+	s := Settings{TempoBPM: DefaultTempoBPM, RootNote: DefaultRootNote}
 	data, err := os.ReadFile(path)
 	if errors.Is(err, fs.ErrNotExist) {
 		return s, nil
@@ -197,6 +216,7 @@ func Load(path string) (Settings, error) {
 		return s, err
 	}
 	s.TempoBPM = min(max(s.TempoBPM, MinTempoBPM), MaxTempoBPM)
+	s.RootNote = min(max(s.RootNote, MinRootNote), MaxRootNote)
 	return s, nil
 }
 

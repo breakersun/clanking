@@ -99,8 +99,8 @@ func TestAnnouncePublishesStartedCue(t *testing.T) {
 }
 
 func TestStatusLineJoinsSettingsAndGrid(t *testing.T) {
-	got := statusLine(control.Settings{VolumeDB: -6, Muted: true, TempoBPM: 120}, "in 32nds, 3 queued, 41 dropped")
-	if want := "volume -6 dB, muted, 120 bpm in 32nds, 3 queued, 41 dropped"; got != want {
+	got := statusLine(control.Settings{VolumeDB: -6, Muted: true, TempoBPM: 120, RootNote: control.DefaultRootNote}, "in 32nds, 3 queued, 41 dropped")
+	if want := "volume -6 dB, muted, root D5, 120 bpm in 32nds, 3 queued, 41 dropped"; got != want {
 		t.Errorf("statusLine = %q, want %q", got, want)
 	}
 }

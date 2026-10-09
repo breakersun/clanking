@@ -31,10 +31,10 @@ func serveControl(t *testing.T, path string, handle func(control.Request) (contr
 func TestAskReturnsDaemonStatus(t *testing.T) {
 	path := controlPath(t)
 	serveControl(t, path, func(r control.Request) (control.Settings, error) {
-		return control.Settings{}.Apply(r), nil
+		return control.Settings{RootNote: control.DefaultRootNote}.Apply(r), nil
 	})
 	got, _ := transport.Ask(path, control.Request{Command: control.Volume, VolumeDB: -6})
-	if want := "volume -6 dB, unmuted, 0 bpm; " + gridState; got != want {
+	if want := "volume -6 dB, unmuted, root D5, 0 bpm; " + gridState; got != want {
 		t.Errorf("Ask = %q, want %q", got, want)
 	}
 }

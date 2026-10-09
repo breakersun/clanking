@@ -65,8 +65,8 @@ func TestCueLine(t *testing.T) {
 }
 
 func TestSettingsLine(t *testing.T) {
-	if got := events.SettingsLine(control.Settings{VolumeDB: -6, Muted: true, TempoBPM: 120}); got != "settings volume -6 dB, muted, 120 bpm" {
-		t.Errorf("SettingsLine = %q, want %q", got, "settings volume -6 dB, muted, 120 bpm")
+	if got := events.SettingsLine(control.Settings{VolumeDB: -6, Muted: true, TempoBPM: 120, RootNote: 74}); got != "settings volume -6 dB, muted, root D5, 120 bpm" {
+		t.Errorf("SettingsLine = %q, want %q", got, "settings volume -6 dB, muted, root D5, 120 bpm")
 	}
 }
 
