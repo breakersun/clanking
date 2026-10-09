@@ -218,7 +218,7 @@ func runDaemon() error {
 
 func enqueue(sounds chan<- mixer.Sound, rng *rand.Rand) func(synth.Cue, string) {
 	return func(c synth.Cue, cwd string) {
-		samples, ok := synth.Sound(c, rng)
+		samples, ok := synth.Sound(c, control.DefaultRootNote, rng)
 		if !ok {
 			slog.Warn("unknown cue", "cue", c)
 			return
@@ -236,7 +236,7 @@ func announce(publish func(string)) func(mixer.Sound) {
 }
 
 func runPlay(c synth.Cue) error {
-	samples, ok := synth.Sound(c, newRNG())
+	samples, ok := synth.Sound(c, control.DefaultRootNote, newRNG())
 	if !ok {
 		return fmt.Errorf("unknown cue %q", c)
 	}

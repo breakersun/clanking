@@ -31,7 +31,7 @@ func Run(status func() (control.Settings, error), send func(synth.Cue) error, sl
 		if err := send(c); err != nil {
 			return err
 		}
-		samples, _ := synth.Sound(c, rng)
+		samples, _ := synth.Sound(c, control.DefaultRootNote, rng)
 		sleep(time.Duration(len(samples))*time.Second/synth.SampleRate + cuePause)
 	}
 	return nil

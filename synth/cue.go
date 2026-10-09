@@ -22,7 +22,7 @@ const (
 	Noted      Cue = "noted"
 )
 
-// tickNotes are the D major pentatonic notes A6 to F#7, in semitones above the tonic.
+// tickNotes are the major pentatonic notes from an octave and a fifth to two octaves and a third above the root.
 var tickNotes = []float64{19, 21, 24, 26, 28}
 
 // Cues lists every cue in self-test order, ending on Done.
@@ -74,22 +74,22 @@ var scores = map[Cue]score{
 	Noted:      {ReplyPeakDB, []Note{{From: 12, To: 12, Length: plink, Decay: plinkDecay, Timbre: Sine}}},
 }
 
-// Sound renders a cue, reporting false for an unknown cue.
-func Sound(c Cue, rng *rand.Rand) ([]float32, bool) {
+// Sound renders a cue on the root MIDI note, reporting false for an unknown cue.
+func Sound(c Cue, root int, rng *rand.Rand) ([]float32, bool) {
 	if c == Tick {
-		return tick(rng), true
+		return tick(root, rng), true
 	}
 	s, ok := scores[c]
 	if !ok {
 		return nil, false
 	}
-	return Render(s.notes, s.peakDB), true
+	return Render(s.notes, root, s.peakDB), true
 }
 
-func tick(rng *rand.Rand) []float32 {
+func tick(root int, rng *rand.Rand) []float32 {
 	pitch := tickNotes[rng.IntN(len(tickNotes))]
 	jitter := (2*rng.Float64() - 1) * TickJitterDB
-	return Render([]Note{{From: pitch, To: pitch, Length: tickLength, Decay: tickDecay, Timbre: Sine}}, TickPeakDB+jitter)
+	return Render([]Note{{From: pitch, To: pitch, Length: tickLength, Decay: tickDecay, Timbre: Sine}}, root, TickPeakDB+jitter)
 }
 
 func held(semitones float64, onset, length time.Duration) Note {

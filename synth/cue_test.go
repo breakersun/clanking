@@ -21,7 +21,7 @@ func newRNG() *rand.Rand { return rand.New(rand.NewPCG(1, 2)) }
 
 func sound(t *testing.T, c synth.Cue) []float32 {
 	t.Helper()
-	samples, ok := synth.Sound(c, newRNG())
+	samples, ok := synth.Sound(c, testRoot, newRNG())
 	if !ok {
 		t.Fatalf("Sound(%q) unknown", c)
 	}
@@ -91,8 +91,8 @@ func TestTickStaysUnderJitteredLevel(t *testing.T) {
 }
 
 func tickSemitones(rng *rand.Rand) float64 {
-	samples, _ := synth.Sound(synth.Tick, rng)
-	return synth.Semitones(pitchHz(samples))
+	samples, _ := synth.Sound(synth.Tick, testRoot, rng)
+	return synth.MIDINote(pitchHz(samples)) - testRoot
 }
 
 func onScale(semitones float64) bool {
@@ -142,15 +142,22 @@ func TestCueFinalPitch(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(string(tc.cue), func(t *testing.T) {
 			got := pitchHz(sound(t, tc.cue)[ms(tc.fromMs):ms(tc.toMs)])
-			if !approx.Equal(synth.Hz(tc.semitones), got, pitchTolerance) {
-				t.Errorf("pitch = %v, want %v", got, synth.Hz(tc.semitones))
+			if !approx.Equal(synth.Hz(testRoot + tc.semitones), got, pitchTolerance) {
+				t.Errorf("pitch = %v, want %v", got, synth.Hz(testRoot + tc.semitones))
 			}
 		})
 	}
 }
 
+func TestCuesFollowTheRoot(t *testing.T) {
+	samples, _ := synth.Sound(synth.Noted, concertA, newRNG())
+	if got := pitchHz(samples[ms(10):ms(60)]); !approx.Equal(2*440, got, pitchTolerance) {
+		t.Errorf("pitch = %v, want 880", got)
+	}
+}
+
 func TestUnknownCueIsRejected(t *testing.T) {
-	if _, ok := synth.Sound("bogus", newRNG()); ok {
+	if _, ok := synth.Sound("bogus", testRoot, newRNG()); ok {
 		t.Error("Sound(bogus) ok = true, want false")
 	}
 }
@@ -178,7 +185,7 @@ func TestEveryListedCueHasASound(t *testing.T) {
 	rng := newRNG()
 	for _, c := range synth.Cues {
 		t.Run(string(c), func(t *testing.T) {
-			if _, ok := synth.Sound(c, rng); !ok {
+			if _, ok := synth.Sound(c, testRoot, rng); !ok {
 				t.Errorf("Sound(%q) unknown", c)
 			}
 		})

@@ -14,6 +14,8 @@ const (
 	pitchTolerance = 0.005
 	levelTolerance = 1e-6
 	sustain        = time.Hour
+	testRoot       = 74
+	concertA       = 69
 )
 
 func ms(n int) int { return n * synth.SampleRate / 1000 }
@@ -50,20 +52,26 @@ func TestAmplitudeOfMinusTwentyDecibels(t *testing.T) {
 	}
 }
 
-func TestSemitonesInvertsHz(t *testing.T) {
-	if got := synth.Semitones(synth.Hz(7)); !approx.Equal(7, got, levelTolerance) {
-		t.Errorf("Semitones(Hz(7)) = %v, want 7", got)
+func TestMIDINoteInvertsHz(t *testing.T) {
+	if got := synth.MIDINote(synth.Hz(testRoot)); !approx.Equal(testRoot, got, levelTolerance) {
+		t.Errorf("MIDINote(Hz(%d)) = %v, want %d", testRoot, got, testRoot)
+	}
+}
+
+func TestConcertAIs440Hz(t *testing.T) {
+	if got := synth.Hz(concertA); got != 440 {
+		t.Errorf("Hz(%d) = %v, want 440", concertA, got)
 	}
 }
 
 func TestRenderStartsSilent(t *testing.T) {
-	if got := synth.Render(tonic(50*time.Millisecond), testPeakDB)[0]; got != 0 {
+	if got := synth.Render(tonic(50*time.Millisecond), testRoot, testPeakDB)[0]; got != 0 {
 		t.Errorf("first sample = %v, want 0", got)
 	}
 }
 
 func TestRenderEndsSilent(t *testing.T) {
-	samples := synth.Render(tonic(50*time.Millisecond), testPeakDB)
+	samples := synth.Render(tonic(50*time.Millisecond), testRoot, testPeakDB)
 	if got := samples[len(samples)-1]; got != 0 {
 		t.Errorf("last sample = %v, want 0", got)
 	}
@@ -74,28 +82,28 @@ func TestRenderLengthCoversLatestNote(t *testing.T) {
 		{From: 0, To: 0, Length: 50 * time.Millisecond, Decay: sustain, Timbre: synth.Sine},
 		{From: 0, To: 0, Onset: 30 * time.Millisecond, Length: 50 * time.Millisecond, Decay: sustain, Timbre: synth.Sine},
 	}
-	if got := len(synth.Render(score, testPeakDB)); got != ms(80) {
+	if got := len(synth.Render(score, testRoot, testPeakDB)); got != ms(80) {
 		t.Errorf("len = %d, want %d", got, ms(80))
 	}
 }
 
 func TestRenderPeaksAtRequestedLevel(t *testing.T) {
-	got := peak(synth.Render(tonic(50*time.Millisecond), testPeakDB))
+	got := peak(synth.Render(tonic(50*time.Millisecond), testRoot, testPeakDB))
 	if !approx.Equal(synth.Amplitude(testPeakDB), got, levelTolerance) {
 		t.Errorf("peak = %v, want %v", got, synth.Amplitude(testPeakDB))
 	}
 }
 
-func TestRenderSteadyNoteSoundsAtTonic(t *testing.T) {
-	if got := pitchHz(synth.Render(tonic(200*time.Millisecond), testPeakDB)); !approx.Equal(synth.TonicHz, got, pitchTolerance) {
-		t.Errorf("pitch = %v, want %v", got, synth.TonicHz)
+func TestRenderSteadyNoteSoundsAtRoot(t *testing.T) {
+	if got := pitchHz(synth.Render(tonic(200*time.Millisecond), concertA, testPeakDB)); !approx.Equal(440, got, pitchTolerance) {
+		t.Errorf("pitch = %v, want 440", got)
 	}
 }
 
 func TestRenderGlideApproachesTarget(t *testing.T) {
 	glide := []synth.Note{{From: 0, To: 7, Length: 250 * time.Millisecond, Decay: sustain, Timbre: synth.Sine}}
-	samples := synth.Render(glide, testPeakDB)
-	want := synth.Hz(7 * 240.0 / 250.0)
+	samples := synth.Render(glide, testRoot, testPeakDB)
+	want := synth.Hz(testRoot + 7*240.0/250.0)
 	if got := pitchHz(samples[ms(235):ms(245)]); !approx.Equal(want, got, 2*pitchTolerance) {
 		t.Errorf("pitch near end = %v, want %v", got, want)
 	}

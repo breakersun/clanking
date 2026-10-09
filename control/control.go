@@ -33,6 +33,13 @@ const (
 	DefaultTempoBPM = 120
 )
 
+// The root range as MIDI notes, D4 to D6, and the root before any is set, D5.
+const (
+	MinRootNote     = 62
+	MaxRootNote     = 86
+	DefaultRootNote = 74
+)
+
 // MaxVolumeDB is the loudest volume, where limited output reaches full scale.
 const MaxVolumeDB = 24.0
 
