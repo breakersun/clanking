@@ -142,8 +142,8 @@ func TestCueFinalPitch(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(string(tc.cue), func(t *testing.T) {
 			got := pitchHz(sound(t, tc.cue)[ms(tc.fromMs):ms(tc.toMs)])
-			if !approx.Equal(synth.Hz(testRoot + tc.semitones), got, pitchTolerance) {
-				t.Errorf("pitch = %v, want %v", got, synth.Hz(testRoot + tc.semitones))
+			if !approx.Equal(synth.Hz(testRoot+tc.semitones), got, pitchTolerance) {
+				t.Errorf("pitch = %v, want %v", got, synth.Hz(testRoot+tc.semitones))
 			}
 		})
 	}
