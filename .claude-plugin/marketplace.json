@@ -1,0 +1,14 @@
+{
+  "name": "clanking",
+  "owner": {
+    "name": "Robert Church"
+  },
+  "description": "The clanking hooks for Claude Code",
+  "plugins": [
+    {
+      "name": "clanking",
+      "source": "./",
+      "description": "Hooks that turn Claude Code activity into a quiet soundscape through the clanking daemon"
+    }
+  ]
+}
