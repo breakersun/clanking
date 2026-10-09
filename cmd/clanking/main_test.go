@@ -37,7 +37,7 @@ func TestLimiterCeilingSitsSixDecibelsAboveCues(t *testing.T) {
 func TestEnqueueDropsWhenQueueIsFull(t *testing.T) {
 	returned := make(chan struct{})
 	go func() {
-		enqueue(make(chan mixer.Sound), newRNG())(synth.Done, "")
+		enqueue(make(chan mixer.Sound), newRNG(), defaultRoot)(synth.Done, "")
 		close(returned)
 	}()
 	select {
@@ -117,9 +117,32 @@ func TestUsageListsTempo(t *testing.T) {
 	}
 }
 
+func TestRunRejectsOutOfRangeRootBeforeContactingDaemon(t *testing.T) {
+	if err := run([]string{"root", "100"}); !errors.Is(err, control.ErrInvalid) {
+		t.Errorf("run error = %v, want %v", err, control.ErrInvalid)
+	}
+}
+
+func TestUsageListsRoot(t *testing.T) {
+	if !strings.Contains(errUsage.Error(), "| root <midi>") {
+		t.Errorf("usage = %q, want it to list root", errUsage)
+	}
+}
+
+func defaultRoot() int { return control.DefaultRootNote }
+
+func TestEnqueueRendersAtTheCurrentRoot(t *testing.T) {
+	sounds := make(chan mixer.Sound, 1)
+	enqueue(sounds, newRNG(), func() int { return control.MinRootNote })(synth.Done, "")
+	want, _ := synth.Sound(synth.Done, control.MinRootNote, newRNG())
+	if got := (<-sounds).Samples; !slices.Equal(got, want) {
+		t.Error("enqueued samples differ from Done rendered at the current root")
+	}
+}
+
 func TestEnqueuePansByCwd(t *testing.T) {
 	sounds := make(chan mixer.Sound, 1)
-	enqueue(sounds, newRNG())(synth.Done, "/home/rc/clanking")
+	enqueue(sounds, newRNG(), defaultRoot)(synth.Done, "/home/rc/clanking")
 	if got := (<-sounds).Pan; got != pan.Of("/home/rc/clanking") {
 		t.Errorf("Pan = %v, want %v", got, pan.Of("/home/rc/clanking"))
 	}

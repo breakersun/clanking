@@ -39,7 +39,7 @@ const (
 )
 
 var (
-	errUsage         = errors.New("usage: clanking hook [--no-spawn] | daemon | play <cue> | mute | unmute | toggle | volume <dB> | tempo <bpm> | status | selftest")
+	errUsage         = errors.New("usage: clanking hook [--no-spawn] | daemon | play <cue> | mute | unmute | toggle | volume <dB> | tempo <bpm> | root <midi> | status | selftest")
 	errSpawnDisabled = errors.New("no daemon is running and spawning is disabled")
 )
 
@@ -72,7 +72,7 @@ func run(args []string) error {
 		return runPlay(synth.Cue(args[1]))
 	case len(args) == 1 && slices.Contains([]string{control.Mute, control.Unmute, control.Toggle, control.Status}, args[0]):
 		return runControl(args[0])
-	case len(args) == 2 && slices.Contains([]string{control.Volume, control.Tempo}, args[0]):
+	case len(args) == 2 && slices.Contains([]string{control.Volume, control.Tempo, control.Root}, args[0]):
 		return runControl(strings.Join(args, " "))
 	case slices.Equal(args, []string{"selftest"}):
 		return selftest.RunDaemon(spawnDaemon)
@@ -148,11 +148,7 @@ func runDaemon() error {
 	if err != nil {
 		return err
 	}
-	settingsPath, err := statedir.Path(settingsName)
-	if err != nil {
-		return err
-	}
-	settings, err := control.Load(settingsPath)
+	settingsPath, settings, err := loadSettings()
 	if err != nil {
 		return err
 	}
@@ -191,8 +187,12 @@ func runDaemon() error {
 	controller := control.NewController(settings,
 		func(s control.Settings) error { return control.Save(settingsPath, s) },
 		func(s control.Settings) { changes <- s; hub.Publish(events.SettingsLine(s)) })
+	current := func() control.Settings {
+		s, _ := controller.Handle(control.Request{Command: control.Status})
+		return s
+	}
 	go func() {
-		if err := transport.Serve(conn, enqueue(sounds, newRNG())); err != nil {
+		if err := transport.Serve(conn, enqueue(sounds, newRNG(), func() int { return current().RootNote })); err != nil {
 			slog.Error("cue socket failed", "err", err)
 		}
 	}()
@@ -202,10 +202,7 @@ func runDaemon() error {
 		}
 	}()
 	go func() {
-		snapshot := func() string {
-			s, _ := controller.Handle(control.Request{Command: control.Status})
-			return events.SettingsLine(s)
-		}
+		snapshot := func() string { return events.SettingsLine(current()) }
 		if err := transport.ServeEvents(eventsListener, hub.Subscribe, snapshot); err != nil {
 			slog.Error("events socket failed", "err", err)
 		}
@@ -216,9 +213,18 @@ func runDaemon() error {
 	return errors.Join(playErr, conn.Close(), os.Remove(socket), listener.Close(), eventsListener.Close(), stream.Close())
 }
 
-func enqueue(sounds chan<- mixer.Sound, rng *rand.Rand) func(synth.Cue, string) {
+func loadSettings() (string, control.Settings, error) {
+	path, err := statedir.Path(settingsName)
+	if err != nil {
+		return "", control.Settings{}, err
+	}
+	s, err := control.Load(path)
+	return path, s, err
+}
+
+func enqueue(sounds chan<- mixer.Sound, rng *rand.Rand, root func() int) func(synth.Cue, string) {
 	return func(c synth.Cue, cwd string) {
-		samples, ok := synth.Sound(c, control.DefaultRootNote, rng)
+		samples, ok := synth.Sound(c, root(), rng)
 		if !ok {
 			slog.Warn("unknown cue", "cue", c)
 			return
@@ -236,7 +242,11 @@ func announce(publish func(string)) func(mixer.Sound) {
 }
 
 func runPlay(c synth.Cue) error {
-	samples, ok := synth.Sound(c, control.DefaultRootNote, newRNG())
+	_, settings, err := loadSettings()
+	if err != nil {
+		return err
+	}
+	samples, ok := synth.Sound(c, settings.RootNote, newRNG())
 	if !ok {
 		return fmt.Errorf("unknown cue %q", c)
 	}
