@@ -10,8 +10,7 @@ happy chorus of chattering clankers.
 
 ## Demo
 
-<!-- markdownlint-disable-next-line MD033 -->
-<video src="demo.mp4" controls="controls" width="100%"></video>
+<!-- Demo video goes here -->
 
 ## Design
 
