@@ -10,7 +10,7 @@ happy chorus of chattering clankers.
 
 ## Demo
 
-<!-- Demo video goes here -->
+https://github.com/user-attachments/assets/437b30b0-3852-4670-b634-daad4949b651
 
 ## Design
 
