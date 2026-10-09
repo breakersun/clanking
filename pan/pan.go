@@ -29,13 +29,3 @@ func Gains(p float64) (left, right float64) {
 	theta := (p + 1) * quarterTurn
 	return math.Cos(theta), math.Sin(theta)
 }
-
-// Interleave returns mono samples as left/right frames at pan p.
-func Interleave(samples []float32, p float64) []float32 {
-	left, right := Gains(p)
-	out := make([]float32, 0, Channels*len(samples))
-	for _, x := range samples {
-		out = append(out, float32(left)*x, float32(right)*x)
-	}
-	return out
-}

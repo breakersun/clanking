@@ -65,21 +65,3 @@ func TestGainsKeepPowerConstant(t *testing.T) {
 		t.Errorf("left² + right² = %v, want 1", got)
 	}
 }
-
-func TestInterleaveDoublesLength(t *testing.T) {
-	if got := len(pan.Interleave(make([]float32, 3), 0)); got != pan.Channels*3 {
-		t.Errorf("len = %d, want %d", got, pan.Channels*3)
-	}
-}
-
-func TestInterleavePutsLeftFirst(t *testing.T) {
-	if got := pan.Interleave([]float32{1}, hardLeft); got[0] != 1 {
-		t.Errorf("first sample = %v, want 1", got[0])
-	}
-}
-
-func TestInterleaveSilencesRightWhenHardLeft(t *testing.T) {
-	if got := pan.Interleave([]float32{1}, hardLeft); got[1] != 0 {
-		t.Errorf("second sample = %v, want 0", got[1])
-	}
-}
