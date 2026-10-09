@@ -64,7 +64,7 @@ var scores = map[Cue]score{
 	Return: {CuePeakDB, []Note{held(19, 0, bloop), held(12, bloop, bloop)}},
 	Done:   {CuePeakDB, []Note{rung(7, 0), rung(4, cadenceGap), rung(0, 2*cadenceGap)}},
 	Failed: {CuePeakDB, []Note{
-		{From: -6, To: -6, Length: buzzNote, Decay: sustain, Timbre: Buzzy},
+		{From: -5, To: -5, Length: buzzNote, Decay: sustain, Timbre: Buzzy},
 		{From: -12, To: -12, Onset: buzzNote, Length: buzzNote, Decay: sustain, Timbre: Buzzy},
 	}},
 	Permission: {CuePeakDB, []Note{held(5, 0, knock), held(5, knock, knock), held(11, 2*knock, hang)}},
