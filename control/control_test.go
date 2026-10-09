@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/chrchr/clanking/control"
+	"github.com/chrchr/clanking/synth"
 	"github.com/chrchr/clanking/internal/approx"
 )
 
@@ -271,5 +272,11 @@ func TestLoadClampsHighRoot(t *testing.T) {
 func TestLoadKeepsValidRoot(t *testing.T) {
 	if got := loadRoot(t, "70"); got != 70 {
 		t.Errorf("RootNote = %d, want 70", got)
+	}
+}
+
+func TestDefaultRootIsC5(t *testing.T) {
+	if got := synth.NoteName(control.DefaultRootNote); got != "C5" {
+		t.Errorf("default root = %s, want C5", got)
 	}
 }
