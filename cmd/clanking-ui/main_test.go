@@ -72,32 +72,33 @@ func TestRootRequestCarriesNote(t *testing.T) {
 	}
 }
 
-func TestAuditionsAfterRootChange(t *testing.T) {
-	if !auditions(rootRequest(70), control.Settings{RootNote: 70}, nil) {
-		t.Error("auditions = false, want true")
+func TestRootChangeAuditionsTheTonic(t *testing.T) {
+	if got, want := auditions(rootRequest(70), control.Settings{RootNote: 70}, nil), []synth.Cue{synth.Tonic}; !slices.Equal(got, want) {
+		t.Errorf("auditions = %v, want %v", got, want)
+	}
+}
+
+func TestTempoChangeAuditionsFourTicks(t *testing.T) {
+	want := []synth.Cue{synth.Tick, synth.Tick, synth.Tick, synth.Tick}
+	if got := auditions(tempoRequest(85), control.Settings{TempoBPM: 85}, nil); !slices.Equal(got, want) {
+		t.Errorf("auditions = %v, want %v", got, want)
 	}
 }
 
 func TestNoAuditionWhenMuted(t *testing.T) {
-	if auditions(rootRequest(70), control.Settings{RootNote: 70, Muted: true}, nil) {
-		t.Error("auditions = true, want false")
+	if got := auditions(rootRequest(70), control.Settings{RootNote: 70, Muted: true}, nil); len(got) != 0 {
+		t.Errorf("auditions = %v, want none", got)
 	}
 }
 
 func TestNoAuditionForOtherRequests(t *testing.T) {
-	if auditions(tempoRequest(85), control.Settings{TempoBPM: 85}, nil) {
-		t.Error("auditions = true, want false")
+	if got := auditions(control.Request{Command: control.Volume, VolumeDB: -6}, control.Settings{VolumeDB: -6}, nil); len(got) != 0 {
+		t.Errorf("auditions = %v, want none", got)
 	}
 }
 
 func TestNoAuditionWhenRootChangeFails(t *testing.T) {
-	if auditions(rootRequest(70), control.Settings{}, errors.New("no daemon")) {
-		t.Error("auditions = true, want false")
-	}
-}
-
-func TestRootChangeAuditionsTheTonic(t *testing.T) {
-	if auditionCue != synth.Tonic {
-		t.Errorf("auditionCue = %q, want %q", auditionCue, synth.Tonic)
+	if got := auditions(rootRequest(70), control.Settings{}, errors.New("no daemon")); len(got) != 0 {
+		t.Errorf("auditions = %v, want none", got)
 	}
 }

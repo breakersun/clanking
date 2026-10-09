@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/chrchr/clanking/control"
-	"github.com/chrchr/clanking/synth"
 	"github.com/chrchr/clanking/internal/approx"
+	"github.com/chrchr/clanking/synth"
 )
 
 const tolerance = 1e-9

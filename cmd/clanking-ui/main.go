@@ -35,7 +35,6 @@ const (
 	tempoFormat       = "%d bpm"
 	tempoTooltip      = "Tempo"
 	rootTooltip       = "Root"
-	auditionCue       = synth.Tonic
 	zeroDetentDB      = 1.0
 	zeroMark          = "0"
 	spacing           = 6
@@ -115,8 +114,8 @@ func newPanel(app *gtk.Application, ask func(control.Request) (control.Settings,
 		lamps:    newLamps(),
 	}
 	go forward(p.requests, ask, func(r control.Request, s control.Settings, err error) {
-		if auditions(r, s, err) {
-			play(auditionCue)
+		for _, c := range auditions(r, s, err) {
+			play(c)
 		}
 		glib.IdleAdd(func() { p.show(s, err) })
 	})
@@ -195,8 +194,16 @@ func rootRequest(note int) control.Request {
 	return control.Request{Command: control.Root, RootNote: note}
 }
 
-func auditions(r control.Request, s control.Settings, err error) bool {
-	return err == nil && r.Command == control.Root && !s.Muted
+var auditionCues = map[string][]synth.Cue{
+	control.Root:  {synth.Tonic},
+	control.Tempo: {synth.Tick, synth.Tick, synth.Tick, synth.Tick},
+}
+
+func auditions(r control.Request, s control.Settings, err error) []synth.Cue {
+	if err != nil || s.Muted {
+		return nil
+	}
+	return auditionCues[r.Command]
 }
 
 func (p *panel) sendSettled(pending *glib.SourceHandle, request func() control.Request) {
