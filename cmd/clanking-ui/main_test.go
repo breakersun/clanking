@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"slices"
 	"testing"
 	"time"
@@ -22,7 +23,7 @@ func TestForwardRepliesInRequestOrder(t *testing.T) {
 		return control.Settings{}.Apply(r), nil
 	}
 	var replies []bool
-	forward(requests, ask, func(s control.Settings, _ error) { replies = append(replies, s.Muted) })
+	forward(requests, ask, func(_ control.Request, s control.Settings, _ error) { replies = append(replies, s.Muted) })
 	if want := []bool{true, false}; !slices.Equal(replies, want) {
 		t.Errorf("replies = %v, want %v", replies, want)
 	}
@@ -55,5 +56,41 @@ func TestMuteIconWhenMuted(t *testing.T) {
 func TestMuteIconWhenUnmuted(t *testing.T) {
 	if got := muteIcon(false); got != "audio-volume-high-symbolic" {
 		t.Errorf("muteIcon(false) = %q, want audio-volume-high-symbolic", got)
+	}
+}
+
+func TestTempoLabelShowsBPM(t *testing.T) {
+	if got := tempoLabel(85); got != "85 bpm" {
+		t.Errorf("tempoLabel(85) = %q, want 85 bpm", got)
+	}
+}
+
+func TestRootRequestCarriesNote(t *testing.T) {
+	if got, want := rootRequest(70), (control.Request{Command: control.Root, RootNote: 70}); got != want {
+		t.Errorf("rootRequest(70) = %+v, want %+v", got, want)
+	}
+}
+
+func TestAuditionsAfterRootChange(t *testing.T) {
+	if !auditions(rootRequest(70), control.Settings{RootNote: 70}, nil) {
+		t.Error("auditions = false, want true")
+	}
+}
+
+func TestNoAuditionWhenMuted(t *testing.T) {
+	if auditions(rootRequest(70), control.Settings{RootNote: 70, Muted: true}, nil) {
+		t.Error("auditions = true, want false")
+	}
+}
+
+func TestNoAuditionForOtherRequests(t *testing.T) {
+	if auditions(tempoRequest(85), control.Settings{TempoBPM: 85}, nil) {
+		t.Error("auditions = true, want false")
+	}
+}
+
+func TestNoAuditionWhenRootChangeFails(t *testing.T) {
+	if auditions(rootRequest(70), control.Settings{}, errors.New("no daemon")) {
+		t.Error("auditions = true, want false")
 	}
 }

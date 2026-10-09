@@ -1,4 +1,4 @@
-// Command clanking-ui is a GTK 4 window that sets the clanking daemon's volume, mute, and tempo.
+// Command clanking-ui is a GTK 4 window that sets the clanking daemon's volume, mute, tempo, and root.
 package main
 
 import (
@@ -17,6 +17,7 @@ import (
 	"github.com/chrchr/clanking/daemon"
 	"github.com/chrchr/clanking/events"
 	"github.com/chrchr/clanking/statedir"
+	"github.com/chrchr/clanking/synth"
 	"github.com/chrchr/clanking/transport"
 )
 
@@ -31,8 +32,9 @@ const (
 	volumeStepDB      = 0.5
 	volumeDigits      = 1
 	settingDebounce   = 100 * time.Millisecond
-	tempoUnit         = "bpm"
+	tempoFormat       = "%d bpm"
 	tempoTooltip      = "Tempo"
+	rootTooltip       = "Root"
 	zeroDetentDB      = 1.0
 	zeroMark          = "0"
 	spacing           = 6
@@ -45,10 +47,12 @@ type panel struct {
 	volume        *gtk.Scale
 	mute          *gtk.ToggleButton
 	tempo         *knob
+	root          *knob
 	errors        *gtk.Label
 	requests      chan control.Request
 	volumePending glib.SourceHandle
 	tempoPending  glib.SourceHandle
+	rootPending   glib.SourceHandle
 	syncing       bool
 	lamps         *lamps
 }
@@ -67,7 +71,7 @@ func main() {
 	}
 	app := gtk.NewApplication(appID, gio.ApplicationDefaultFlags)
 	app.ConnectActivate(func() {
-		p := newPanel(app, askDaemon)
+		p := newPanel(app, askDaemon, playCue)
 		go p.watch(eventsPath)
 		p.send(control.Request{Command: control.Status})
 	})
@@ -83,6 +87,16 @@ func askDaemon(r control.Request) (control.Settings, error) {
 	return s, err
 }
 
+func playCue(c synth.Cue) {
+	path, err := statedir.RunPath(statedir.CueSocket)
+	if err == nil {
+		err = transport.Send(path, c, "")
+	}
+	if err != nil {
+		slog.Warn("cue not sent", "cue", c, "err", err)
+	}
+}
+
 func spawnSibling() error {
 	self, err := os.Executable()
 	if err != nil {
@@ -91,7 +105,7 @@ func spawnSibling() error {
 	return daemon.Spawn(filepath.Join(filepath.Dir(self), daemonBinary))
 }
 
-func newPanel(app *gtk.Application, ask func(control.Request) (control.Settings, error)) *panel {
+func newPanel(app *gtk.Application, ask func(control.Request) (control.Settings, error), play func(synth.Cue)) *panel {
 	p := &panel{
 		volume:   gtk.NewScaleWithRange(gtk.OrientationHorizontal, minVolumeDB, control.MaxVolumeDB, volumeStepDB),
 		mute:     gtk.NewToggleButton(),
@@ -99,7 +113,12 @@ func newPanel(app *gtk.Application, ask func(control.Request) (control.Settings,
 		requests: make(chan control.Request, requestQueue),
 		lamps:    newLamps(),
 	}
-	go forward(p.requests, ask, func(s control.Settings, err error) { glib.IdleAdd(func() { p.show(s, err) }) })
+	go forward(p.requests, ask, func(r control.Request, s control.Settings, err error) {
+		if auditions(r, s, err) {
+			play(synth.Noted)
+		}
+		glib.IdleAdd(func() { p.show(s, err) })
+	})
 	p.volume.SetDrawValue(true)
 	p.volume.SetDigits(volumeDigits)
 	p.volume.SetHExpand(true)
@@ -110,13 +129,17 @@ func newPanel(app *gtk.Application, ask func(control.Request) (control.Settings,
 	p.mute.SetTooltipText(muteLabel)
 	p.mute.SetVAlign(gtk.AlignCenter)
 	p.mute.ConnectToggled(p.muteToggled)
-	p.tempo = newKnob(control.MinTempoBPM, control.MaxTempoBPM, tempoUnit, p.tempoChanged)
+	p.tempo = newKnob(control.MinTempoBPM, control.MaxTempoBPM, tempoLabel, p.tempoChanged)
 	p.tempo.box.SetTooltipText(tempoTooltip)
 	p.tempo.box.SetVAlign(gtk.AlignCenter)
+	p.root = newKnob(control.MinRootNote, control.MaxRootNote, synth.NoteName, p.rootChanged)
+	p.root.box.SetTooltipText(rootTooltip)
+	p.root.box.SetVAlign(gtk.AlignCenter)
 	controls := gtk.NewBox(gtk.OrientationHorizontal, spacing)
 	controls.Append(p.mute)
 	controls.Append(p.volume)
 	controls.Append(p.tempo.box)
+	controls.Append(p.root.box)
 	box := gtk.NewBox(gtk.OrientationVertical, spacing)
 	box.SetMarginTop(windowMargin)
 	box.SetMarginBottom(windowMargin)
@@ -161,6 +184,20 @@ func tempoRequest(bpm int) control.Request {
 	return control.Request{Command: control.Tempo, TempoBPM: bpm}
 }
 
+func tempoLabel(bpm int) string { return fmt.Sprintf(tempoFormat, bpm) }
+
+func (p *panel) rootChanged() {
+	p.sendSettled(&p.rootPending, func() control.Request { return rootRequest(p.root.value) })
+}
+
+func rootRequest(note int) control.Request {
+	return control.Request{Command: control.Root, RootNote: note}
+}
+
+func auditions(r control.Request, s control.Settings, err error) bool {
+	return err == nil && r.Command == control.Root && !s.Muted
+}
+
 func (p *panel) sendSettled(pending *glib.SourceHandle, request func() control.Request) {
 	if p.syncing {
 		return
@@ -195,9 +232,10 @@ func muteIcon(muted bool) string {
 
 func (p *panel) send(r control.Request) { p.requests <- r }
 
-func forward(requests <-chan control.Request, ask func(control.Request) (control.Settings, error), reply func(control.Settings, error)) {
+func forward(requests <-chan control.Request, ask func(control.Request) (control.Settings, error), reply func(control.Request, control.Settings, error)) {
 	for r := range requests {
-		reply(ask(r))
+		s, err := ask(r)
+		reply(r, s, err)
 	}
 }
 
@@ -219,6 +257,7 @@ func (p *panel) show(settings control.Settings, err error) {
 	p.volume.SetValue(settings.VolumeDB)
 	p.mute.SetActive(settings.Muted)
 	p.tempo.set(settings.TempoBPM)
+	p.root.set(settings.RootNote)
 	p.syncing = false
 }
 

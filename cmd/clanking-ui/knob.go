@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"math"
 
 	"github.com/diamondburned/gotk4/pkg/cairo"
@@ -23,7 +22,6 @@ const (
 	knobPointerInner  = 0.3
 	knobPointerOuter  = 0.85
 	knobCursor        = "ns-resize"
-	knobLabelFormat   = "%d %s"
 	knobClass         = "knob"
 	knobCSS           = ".knob { color: @accent_color; }"
 	knobTrackAlpha    = 0.2
@@ -37,16 +35,16 @@ type knob struct {
 	box       *gtk.Box
 	area      *gtk.DrawingArea
 	label     *gtk.Label
-	unit      string
+	format    func(int) string
 	min, max  int
 	value     int
 	dragStart int
 	changed   func()
 }
 
-func newKnob(minimum, maximum int, unit string, changed func()) *knob {
+func newKnob(minimum, maximum int, format func(int) string, changed func()) *knob {
 	k := &knob{box: gtk.NewBox(gtk.OrientationVertical, 0), area: gtk.NewDrawingArea(), label: gtk.NewLabel(""),
-		unit: unit, min: minimum, max: maximum, changed: changed}
+		format: format, min: minimum, max: maximum, changed: changed}
 	addCSS(knobCSS)
 	k.area.AddCSSClass(knobClass)
 	k.area.SetContentWidth(knobSize)
@@ -71,7 +69,7 @@ func newKnob(minimum, maximum int, unit string, changed func()) *knob {
 
 func (k *knob) set(value int) {
 	k.value = value
-	k.label.SetText(fmt.Sprintf(knobLabelFormat, value, k.unit))
+	k.label.SetText(k.format(value))
 	k.area.QueueDraw()
 }
 
