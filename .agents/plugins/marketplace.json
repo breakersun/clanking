@@ -1,0 +1,20 @@
+{
+  "name": "clanking",
+  "interface": {
+    "displayName": "Clanking"
+  },
+  "plugins": [
+    {
+      "name": "clanking",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

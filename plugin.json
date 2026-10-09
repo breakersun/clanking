@@ -1,0 +1,15 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "clanking",
+  "version": "0.1.0",
+  "description": "Hooks that turn coding agent activity into a quiet soundscape.",
+  "author": {
+    "name": "Robert Church"
+  },
+  "homepage": "https://github.com/chrchr/clanking",
+  "extensions": {
+    "com.openai": {
+      "hooks": "./hooks/codex.json"
+    }
+  }
+}

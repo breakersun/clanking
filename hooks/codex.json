@@ -1,0 +1,20 @@
+{
+  "description": "Play a clanking cue for each Codex activity event",
+  "hooks": {
+    "PreToolUse": [
+      {"hooks": [{"type": "command", "command": "clanking hook", "async": true}]}
+    ],
+    "PermissionRequest": [
+      {"hooks": [{"type": "command", "command": "clanking hook", "async": true}]}
+    ],
+    "SubagentStart": [
+      {"hooks": [{"type": "command", "command": "clanking hook", "async": true}]}
+    ],
+    "SubagentStop": [
+      {"hooks": [{"type": "command", "command": "clanking hook", "async": true}]}
+    ],
+    "Stop": [
+      {"hooks": [{"type": "command", "command": "clanking hook", "async": true}]}
+    ]
+  }
+}
