@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/chrchr/clanking/control"
+	"github.com/chrchr/clanking/synth"
 )
 
 const slowAsk = 50 * time.Millisecond
@@ -92,5 +93,11 @@ func TestNoAuditionForOtherRequests(t *testing.T) {
 func TestNoAuditionWhenRootChangeFails(t *testing.T) {
 	if auditions(rootRequest(70), control.Settings{}, errors.New("no daemon")) {
 		t.Error("auditions = true, want false")
+	}
+}
+
+func TestRootChangeAuditionsTheTonic(t *testing.T) {
+	if auditionCue != synth.Tonic {
+		t.Errorf("auditionCue = %q, want %q", auditionCue, synth.Tonic)
 	}
 }

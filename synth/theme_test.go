@@ -82,7 +82,7 @@ func TestAliasesListsEveryAliasSorted(t *testing.T) {
 
 func TestKnownAcceptsEveryName(t *testing.T) {
 	var unknown []synth.Cue
-	for _, c := range slices.Concat(synth.Cues, synth.ThemeCues, synth.Aliases()) {
+	for _, c := range slices.Concat(synth.Cues, synth.UICues, synth.ThemeCues, synth.Aliases()) {
 		if !synth.Known(c) {
 			unknown = append(unknown, c)
 		}

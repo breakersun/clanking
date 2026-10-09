@@ -82,7 +82,7 @@ func run(args []string) error {
 }
 
 func playUsage() string {
-	return "usage: clanking play <cue>\ncues: " + cueList(synth.Cues) + "\ntheme: " + cueList(synth.ThemeCues) + "\naliases: " + cueList(synth.Aliases())
+	return "usage: clanking play <cue>\ncues: " + cueList(synth.Cues) + "\nui: " + cueList(synth.UICues) + "\ntheme: " + cueList(synth.ThemeCues) + "\naliases: " + cueList(synth.Aliases())
 }
 
 func cueList(cues []synth.Cue) string {

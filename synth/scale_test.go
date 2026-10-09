@@ -29,3 +29,13 @@ func TestEveryCueNoteIsInTheMajorScale(t *testing.T) {
 		t.Errorf("off-scale pitches (semitones above tonic) = %v", off)
 	}
 }
+
+func TestTonicIsTheRootPositionMajorTriad(t *testing.T) {
+	var pitches []float64
+	for _, n := range scores[Tonic].notes {
+		pitches = append(pitches, n.From)
+	}
+	if want := []float64{0, 4, 7}; !slices.Equal(pitches, want) {
+		t.Errorf("tonic pitches = %v, want %v", pitches, want)
+	}
+}

@@ -22,6 +22,12 @@ const (
 	Noted      Cue = "noted"
 )
 
+// Tonic is the root-position major triad the UI plays when the root changes.
+const Tonic Cue = "tonic"
+
+// UICues lists the cues the UI plays that no hook sends.
+var UICues = []Cue{Tonic}
+
 // tickNotes are the major pentatonic notes from an octave and a fifth to two octaves and a third above the root.
 var tickNotes = []float64{19, 21, 24, 26, 28}
 
@@ -69,6 +75,7 @@ var scores = map[Cue]score{
 	Reply:      {ReplyPeakDB, []Note{held(19, 0, blip), held(24, blip, blip)}},
 	Milestone:  {CuePeakDB, []Note{held(0, 0, climb), held(4, climb, climb), held(7, 2*climb, climb), rung(12, 3*climb)}},
 	Noted:      {ReplyPeakDB, []Note{{From: 12, To: 12, Length: plink, Decay: plinkDecay, Timbre: Sine}}},
+	Tonic:      {CuePeakDB, []Note{tolled(0), tolled(4), tolled(7)}},
 }
 
 // Sound renders a cue on the root MIDI note, reporting false for an unknown cue.

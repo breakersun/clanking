@@ -85,6 +85,7 @@ func TestUsageListsSelftest(t *testing.T) {
 
 func TestPlayUsageListsEveryCue(t *testing.T) {
 	want := "usage: clanking play <cue>\ncues: tick spawn return failed permission ask reply milestone noted done\n" +
+		"ui: tonic\n" +
 		"theme: dialog-warning bell alarm-clock-elapsed trash-empty service-login service-logout suspend-error phone-incoming-call phone-outgoing-calling phone-outgoing-busy audio-volume-change camera-shutter screen-capture network-connectivity-established network-connectivity-lost power-plug power-unplug battery-low\n" +
 		"aliases: complete device-added device-removed dialog-error dialog-information dialog-question message message-new-instant window-attention"
 	if got := playUsage(); got != want {

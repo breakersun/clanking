@@ -35,6 +35,7 @@ const (
 	tempoFormat       = "%d bpm"
 	tempoTooltip      = "Tempo"
 	rootTooltip       = "Root"
+	auditionCue       = synth.Tonic
 	zeroDetentDB      = 1.0
 	zeroMark          = "0"
 	spacing           = 6
@@ -115,7 +116,7 @@ func newPanel(app *gtk.Application, ask func(control.Request) (control.Settings,
 	}
 	go forward(p.requests, ask, func(r control.Request, s control.Settings, err error) {
 		if auditions(r, s, err) {
-			play(synth.Noted)
+			play(auditionCue)
 		}
 		glib.IdleAdd(func() { p.show(s, err) })
 	})

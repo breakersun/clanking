@@ -96,11 +96,11 @@ func Canonical(c Cue) Cue {
 // Aliases lists the XDG names that play an existing cue, sorted.
 func Aliases() []Cue { return slices.Sorted(maps.Keys(aliases)) }
 
-// Known reports whether c names a cue, a theme cue, or an alias.
+// Known reports whether c names a hook cue, a UI cue, a theme cue, or an alias.
 func Known(c Cue) bool {
 	_, theme := themeScores[c]
 	_, alias := aliases[c]
-	return slices.Contains(Cues, c) || theme || alias
+	return slices.Contains(slices.Concat(Cues, UICues), c) || theme || alias
 }
 
 func phrase(onset, step time.Duration, semitones ...float64) []Note {
