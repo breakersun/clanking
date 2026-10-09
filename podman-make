@@ -1,0 +1,7 @@
+#!/bin/sh
+# Run make with the given arguments inside the clanking build container.
+set -eu
+image=localhost/clanking-build
+root=$(cd "$(dirname "$0")" && pwd)
+podman build --quiet --tag "$image" "$root" >/dev/null
+exec podman run --rm -v "$root:/src:Z" -v clanking-gomod:/root/go/pkg/mod -v clanking-gocache:/root/.cache "$image" make "$@"
