@@ -2,7 +2,7 @@
 Type=Application
 Name=Clanking
 Comment=Set the volume, mute, and tempo of Clanking's audio cues
-Exec=@BIN@/clanking-ui
+Exec=clanking-ui
 Icon=io.github.chrchr.clanking
 Terminal=false
 Categories=AudioVideo;Audio;
