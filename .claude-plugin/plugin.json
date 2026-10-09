@@ -1,7 +1,7 @@
 {
   "name": "clanking",
   "version": "0.1.0",
-  "description": "Hooks that turn Claude Code activity into a quiet soundscape through the clanking daemon. Requires the clanking binary on PATH.",
+  "description": "Hooks that turn coding agent activity into a quiet soundscape.",
   "author": {
     "name": "Robert Church"
   },

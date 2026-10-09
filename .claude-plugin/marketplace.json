@@ -8,7 +8,7 @@
     {
       "name": "clanking",
       "source": "./",
-      "description": "Hooks that turn Claude Code activity into a quiet soundscape through the clanking daemon"
+      "description": "Hooks that turn agent activity into a quiet soundscape."
     }
   ]
 }

@@ -1,5 +1,5 @@
 {
-  "description": "Play a clanking cue for each Claude Code activity event",
+  "description": "Play a clanking cue for each agent activity event",
   "hooks": {
     "PreToolUse": [
       {
