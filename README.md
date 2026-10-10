@@ -49,6 +49,35 @@ all the development dependencies on your system. The `podman-make`
 script builds and runs the container. Adapting it for Docker is left as
 an exercise for the reader or the reader's coding agent.
 
+## Installation from this fork (WSL / PulseAudio)
+
+This fork adds PulseAudio support for systems without PipeWire, such as
+WSL2/WSLg, which ships PulseAudio instead. On WSLg, set
+`CLANKING_PLAYER=pacat` (from the `pulseaudio-utils` package) so the
+daemon plays through `pacat`; without the variable it still defaults to
+`pw-cat`. Cues stay roughly in sync thanks to a short `--latency-msec`
+cap on the pacat path.
+
+No local Go toolchain or GTK 4 libraries are needed: every push builds
+and tests the `clanking` daemon binary through GitHub Actions (the GTK 4
+UI is not built). Install from the latest successful run of the `build`
+workflow on the `paplay-wsl` branch:
+
+1. Download the `clanking-linux-amd64` artifact.
+2. `install -m 755 clanking ~/.local/bin/clanking`
+3. `sudo apt install pulseaudio-utils`
+4. Add `export CLANKING_PLAYER=pacat` to your `~/.bashrc`.
+
+The plugin install differs only in the marketplace source:
+
+```text
+/plugin marketplace add breakersun/clanking
+/plugin install clanking@clanking
+```
+
+Do not add the upstream marketplace alongside this fork; both name
+their marketplace `clanking`.
+
 ## Configure your Coding Agents
 
 With `clanking` and `pw-cat` in your `$PATH` on a system with PipeWire,
