@@ -34,13 +34,13 @@ var pwCatArgs = []string{
 	"-",
 }
 
+// pacat reads raw PCM from stdin by default and does not accept "-" for it.
 var paCatArgs = []string{
 	"--playback", "--raw",
 	"--format", "float32le",
 	"--rate", strconv.Itoa(synth.SampleRate),
 	"--channels", strconv.Itoa(pan.Channels),
 	"--property=application.name=clanking",
-	"-",
 }
 
 // player returns the audio player binary and its raw-PCM arguments. It defaults
