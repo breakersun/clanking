@@ -35,11 +35,14 @@ var pwCatArgs = []string{
 }
 
 // pacat reads raw PCM from stdin by default and does not accept "-" for it.
+// A short --latency-msec keeps cues in sync on buffered sinks such as WSLg's
+// RDP sound device.
 var paCatArgs = []string{
 	"--playback", "--raw",
 	"--format", "float32le",
 	"--rate", strconv.Itoa(synth.SampleRate),
 	"--channels", strconv.Itoa(pan.Channels),
+	"--latency-msec=60",
 	"--property=application.name=clanking",
 }
 
