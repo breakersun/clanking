@@ -17,7 +17,8 @@ jobs:
           cache: true
 
       - name: Test
-        run: go test ./...
+        # cmd/clanking-ui needs GTK4 dev headers; the shipped binary does not.
+        run: go test $(go list ./... | grep -v cmd/clanking-ui)
 
       - name: Build clanking
         run: CGO_ENABLED=0 go build -buildvcs=false -o bin/clanking ./cmd/clanking
