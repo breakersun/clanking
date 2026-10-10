@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"slices"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/chrchr/clanking/pan"
@@ -43,5 +44,23 @@ func TestCommandPlaysStereo(t *testing.T) {
 	i := slices.Index(args, "--channels")
 	if got := args[i+1]; got != strconv.Itoa(pan.Channels) {
 		t.Errorf("--channels %s, want %d", got, pan.Channels)
+	}
+}
+
+func TestCommandDefaultsToPwCat(t *testing.T) {
+	t.Setenv("CLANKING_PLAYER", "")
+	if got := playback.Command().Path; !strings.HasSuffix(got, "pw-cat") {
+		t.Errorf("Path = %q, want pw-cat", got)
+	}
+}
+
+func TestCommandPacatOverride(t *testing.T) {
+	t.Setenv("CLANKING_PLAYER", "pacat")
+	cmd := playback.Command()
+	if got := cmd.Path; !strings.HasSuffix(got, "pacat") {
+		t.Errorf("Path = %q, want pacat", got)
+	}
+	if !slices.Contains(cmd.Args, "float32le") {
+		t.Errorf("Args = %v, want float32le format", cmd.Args)
 	}
 }

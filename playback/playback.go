@@ -22,6 +22,9 @@ const PipeBytes = 4096
 // StallTimeout is how long a write may wait on a player that stopped reading.
 const StallTimeout = time.Second
 
+// PlayerEnv names the environment variable that overrides the audio player binary.
+const PlayerEnv = "CLANKING_PLAYER"
+
 var pwCatArgs = []string{
 	"--playback", "--raw",
 	"--format", "f32",
@@ -29,6 +32,25 @@ var pwCatArgs = []string{
 	"--channels", strconv.Itoa(pan.Channels),
 	"--properties", "application.name=clanking",
 	"-",
+}
+
+var paCatArgs = []string{
+	"--playback", "--raw",
+	"--format", "float32le",
+	"--rate", strconv.Itoa(synth.SampleRate),
+	"--channels", strconv.Itoa(pan.Channels),
+	"--property=application.name=clanking",
+	"-",
+}
+
+// player returns the audio player binary and its raw-PCM arguments. It defaults
+// to pw-cat (PipeWire) and supports pacat (PulseAudio), as on WSLg, selected
+// through PlayerEnv.
+func player() (string, []string) {
+	if name := os.Getenv(PlayerEnv); name == "pacat" {
+		return "pacat", paCatArgs
+	}
+	return "pw-cat", pwCatArgs
 }
 
 // Encode appends samples to dst as little-endian float32 bytes.
@@ -45,8 +67,12 @@ type Stream struct {
 	pipe *os.File
 }
 
-// Command returns the pw-cat invocation that plays raw interleaved stereo float32 PCM from stdin.
-func Command() *exec.Cmd { return exec.Command("pw-cat", pwCatArgs...) }
+// Command returns the invocation that plays raw interleaved stereo float32 PCM
+// from stdin: pw-cat by default, or the player named by PlayerEnv.
+func Command() *exec.Cmd {
+	name, args := player()
+	return exec.Command(name, args...)
+}
 
 // Start launches a player reading raw PCM from a short pipe.
 func Start(cmd *exec.Cmd) (*Stream, error) {
