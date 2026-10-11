@@ -69,8 +69,9 @@ func TestCommandPacatOverride(t *testing.T) {
 func TestCommandFallsBackToPacat(t *testing.T) {
 	t.Setenv("CLANKING_PLAYER", "")
 	dir := t.TempDir()
-	if err := os.Symlink("/usr/bin/pacat", filepath.Join(dir, "pacat")); err != nil {
-		t.Skip("cannot create pacat symlink:", err)
+	pacat := filepath.Join(dir, "pacat")
+	if err := os.WriteFile(pacat, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
 	}
 	t.Setenv("PATH", dir)
 	cmd := playback.Command()
