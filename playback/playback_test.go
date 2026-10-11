@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -62,5 +63,26 @@ func TestCommandPacatOverride(t *testing.T) {
 	}
 	if !slices.Contains(cmd.Args, "float32le") {
 		t.Errorf("Args = %v, want float32le format", cmd.Args)
+	}
+}
+
+func TestCommandFallsBackToPacat(t *testing.T) {
+	t.Setenv("CLANKING_PLAYER", "")
+	dir := t.TempDir()
+	if err := os.Symlink("/usr/bin/pacat", filepath.Join(dir, "pacat")); err != nil {
+		t.Skip("cannot create pacat symlink:", err)
+	}
+	t.Setenv("PATH", dir)
+	cmd := playback.Command()
+	if got := cmd.Path; !strings.HasSuffix(got, "pacat") {
+		t.Errorf("Path = %q, want pacat fallback", got)
+	}
+}
+
+func TestCommandNoPlayerKeepsPwCatName(t *testing.T) {
+	t.Setenv("CLANKING_PLAYER", "")
+	t.Setenv("PATH", t.TempDir())
+	if got := playback.Command().Path; !strings.HasSuffix(got, "pw-cat") {
+		t.Errorf("Path = %q, want pw-cat", got)
 	}
 }

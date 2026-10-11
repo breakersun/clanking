@@ -48,10 +48,16 @@ var paCatArgs = []string{
 
 // player returns the audio player binary and its raw-PCM arguments. It defaults
 // to pw-cat (PipeWire) and supports pacat (PulseAudio), as on WSLg, selected
-// through PlayerEnv.
+// through PlayerEnv. When pw-cat is not installed but pacat is, as on WSLg,
+// it falls back to pacat.
 func player() (string, []string) {
 	if name := os.Getenv(PlayerEnv); name == "pacat" {
 		return "pacat", paCatArgs
+	}
+	if _, err := exec.LookPath("pw-cat"); err != nil {
+		if _, err := exec.LookPath("pacat"); err == nil {
+			return "pacat", paCatArgs
+		}
 	}
 	return "pw-cat", pwCatArgs
 }
