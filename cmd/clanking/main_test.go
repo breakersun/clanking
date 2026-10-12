@@ -16,6 +16,26 @@ import (
 
 const stallWait = time.Second
 
+func TestHookStaysSilentInsideHerdr(t *testing.T) {
+	t.Setenv("HERDR_ENV", "1")
+	called := false
+	if err := runHook(func() error { called = true; return nil }); err != nil {
+		t.Errorf("runHook error = %v, want nil", err)
+	}
+	if called {
+		t.Error("runHook spawned the daemon inside herdr")
+	}
+}
+
+func TestHookRunsOutsideHerdr(t *testing.T) {
+	t.Setenv("HERDR_ENV", "")
+	// Empty stdin fails hook-event parsing, proving the herdr gate let the
+	// hook proceed instead of returning nil.
+	if err := runHook(refuseSpawn); err == nil {
+		t.Error("runHook error = nil, want a parse error from empty stdin")
+	}
+}
+
 func TestRunRejectsUnknownCommand(t *testing.T) {
 	if err := run([]string{"bogus"}); !errors.Is(err, errUsage) {
 		t.Errorf("run error = %v, want %v", err, errUsage)

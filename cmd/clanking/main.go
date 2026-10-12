@@ -32,6 +32,7 @@ const (
 	noSpawnFlag      = "--no-spawn"
 	helpFlag         = "--help"
 	idleEnv          = "CLANKING_IDLE_TIMEOUT"
+	herdrEnv         = "HERDR_ENV"
 	limiterCeilingDB = -24.0
 	soundQueue       = 64
 	dirMode          = 0o755
@@ -94,6 +95,11 @@ func cueList(cues []synth.Cue) string {
 }
 
 func runHook(spawn func() error) error {
+	// Inside a herdr pane, HERDR_ENV is set; stay silent so clanking does not
+	// compete with herdr there. Sessions outside herdr keep their cues.
+	if os.Getenv(herdrEnv) != "" {
+		return nil
+	}
 	ev, ok, err := hookevent.Parse(os.Stdin)
 	if err != nil || !ok {
 		return err
