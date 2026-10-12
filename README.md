@@ -58,6 +58,13 @@ daemon plays through `pacat`; without the variable it still defaults to
 `pw-cat`. Cues stay roughly in sync thanks to a short `--latency-msec`
 cap on the pacat path.
 
+This fork also stays silent inside a [Herdr](https://herdr.dev) pane.
+Herdr sets `HERDR_ENV=1` for the sessions it hosts. The hook process
+inherits this variable, so the hook does not send a cue when the agent
+runs inside Herdr. Agents outside Herdr keep their cues, and Herdr plays
+its own sounds for agents in background workspaces. The manual
+`clanking play <cue>` command still plays a sound inside Herdr.
+
 No local Go toolchain or GTK 4 libraries are needed: every push builds
 and tests the `clanking` daemon binary through GitHub Actions (the GTK 4
 UI is not built). Install from the latest successful run of the `build`
