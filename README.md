@@ -56,7 +56,10 @@ WSL2/WSLg, which ships PulseAudio instead. On WSLg, set
 `CLANKING_PLAYER=pacat` (from the `pulseaudio-utils` package) so the
 daemon plays through `pacat`; without the variable it still defaults to
 `pw-cat`. Cues stay roughly in sync thanks to a short `--latency-msec`
-cap on the pacat path.
+cap on the pacat path. Waking the machine from sleep drops the RDP audio
+session and leaves the running player wedged on its stale stream; when a
+write to the player stalls, the daemon replaces the player with a fresh
+one and keeps playing instead of dying.
 
 This fork also stays silent inside a [Herdr](https://herdr.dev) pane.
 Herdr sets `HERDR_ENV=1` for the sessions it hosts. The hook process

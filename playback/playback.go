@@ -4,6 +4,7 @@ package playback
 import (
 	"encoding/binary"
 	"errors"
+	"log/slog"
 	"math"
 	"os"
 	"os/exec"
@@ -119,5 +120,77 @@ func shrink(pipe *os.File) error {
 	return fcntlErr
 }
 
+// Kill terminates a player that stopped reading, without waiting for a drain.
+func (s *Stream) Kill() error {
+	if s.cmd.Process != nil {
+		_ = s.cmd.Process.Kill()
+	}
+	return errors.Join(s.pipe.Close(), s.cmd.Wait())
+}
+
 // Close ends the stream and waits for pw-cat to drain and exit.
 func (s *Stream) Close() error { return errors.Join(s.pipe.Close(), s.cmd.Wait()) }
+
+// Player streams PCM to the audio player, replacing the player when its stream
+// goes stale, as on WSLg after sleep and resume leaves the old stream wedged.
+type Player struct {
+	stream *Stream
+}
+
+// NewPlayer returns a Player that launches the audio player on first write.
+func NewPlayer() *Player { return new(Player) }
+
+// Write sends encoded PCM to the player. A stalled player is killed and
+// replaced once per write, so one stale stream cannot stop the daemon; a
+// second consecutive stall fails the write.
+func (p *Player) Write(b []byte) (int, error) {
+	if p.stream == nil {
+		if err := p.start(); err != nil {
+			return 0, err
+		}
+	}
+	n, err := p.stream.Write(b)
+	if err == nil {
+		return n, nil
+	}
+	p.recycle()
+	if err := p.start(); err != nil {
+		return n, err
+	}
+	m, err := p.stream.Write(b[n:])
+	return n + m, err
+}
+
+// Close ends the current player and waits for it to drain and exit, killing it
+// when it does not, as a player wedged on a stale stream never sees end of input.
+func (p *Player) Close() error {
+	if p.stream == nil {
+		return nil
+	}
+	s := p.stream
+	p.stream = nil
+	done := make(chan error, 1)
+	go func() { done <- s.Close() }()
+	select {
+	case err := <-done:
+		return err
+	case <-time.After(StallTimeout):
+		return errors.Join(s.Kill(), <-done)
+	}
+}
+
+func (p *Player) start() error {
+	s, err := Start(Command())
+	if err != nil {
+		return err
+	}
+	p.stream = s
+	return nil
+}
+
+func (p *Player) recycle() {
+	s := p.stream
+	p.stream = nil
+	slog.Warn("stalled audio player replaced")
+	_ = s.Kill()
+}

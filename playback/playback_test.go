@@ -40,6 +40,62 @@ func TestWriteFailsWhenPlayerStopsReading(t *testing.T) {
 	}
 }
 
+// fakePlayer writes a player script whose first instance stalls and later
+// instances drain stdin, counting instances in a file next to the script.
+func fakePlayer(t *testing.T, firstN int) {
+	t.Helper()
+	dir := t.TempDir()
+	script := "#!/bin/sh\n" +
+		"PATH=/usr/bin:/bin\n" +
+		"dirname=$(dirname \"$0\")\n" +
+		"n=$(cat \"$dirname/count\" 2>/dev/null || echo 0)\n" +
+		"n=$((n+1)); echo \"$n\" > \"$dirname/count\"\n" +
+		"if [ \"$n\" -le " + strconv.Itoa(firstN) + " ]; then sleep 30; else exec cat >/dev/null; fi\n"
+	if err := os.WriteFile(filepath.Join(dir, "pacat"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("CLANKING_PLAYER", "pacat")
+	t.Setenv("PATH", dir)
+}
+
+func spawnCount(t *testing.T) int {
+	t.Helper()
+	dir := os.Getenv("PATH")
+	b, err := os.ReadFile(filepath.Join(dir, "count"))
+	if err != nil {
+		return 0
+	}
+	n, err := strconv.Atoi(strings.TrimSpace(string(b)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return n
+}
+
+func TestPlayerWriteReplacesStalledPlayer(t *testing.T) {
+	fakePlayer(t, 1)
+	p := playback.NewPlayer()
+	t.Cleanup(func() { _ = p.Close() })
+	if _, err := p.Write(make([]byte, 4*playback.PipeBytes)); err != nil {
+		t.Errorf("Write error = %v, want recovery after player replacement", err)
+	}
+	if n := spawnCount(t); n != 2 {
+		t.Errorf("player spawns = %d, want 2", n)
+	}
+}
+
+func TestPlayerWriteFailsAfterTwoStalls(t *testing.T) {
+	fakePlayer(t, 2)
+	p := playback.NewPlayer()
+	t.Cleanup(func() { _ = p.Close() })
+	if _, err := p.Write(make([]byte, 4*playback.PipeBytes)); !errors.Is(err, os.ErrDeadlineExceeded) {
+		t.Errorf("Write error = %v, want %v", err, os.ErrDeadlineExceeded)
+	}
+	if n := spawnCount(t); n != 2 {
+		t.Errorf("player spawns = %d, want 2", n)
+	}
+}
+
 func TestCommandPlaysStereo(t *testing.T) {
 	args := playback.Command().Args
 	i := slices.Index(args, "--channels")
@@ -50,6 +106,7 @@ func TestCommandPlaysStereo(t *testing.T) {
 
 func TestCommandDefaultsToPwCat(t *testing.T) {
 	t.Setenv("CLANKING_PLAYER", "")
+	t.Setenv("PATH", t.TempDir())
 	if got := playback.Command().Path; !strings.HasSuffix(got, "pw-cat") {
 		t.Errorf("Path = %q, want pw-cat", got)
 	}

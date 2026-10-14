@@ -195,10 +195,7 @@ func runDaemon() error {
 	if err != nil {
 		return errors.Join(err, conn.Close(), os.Remove(socket), listener.Close())
 	}
-	stream, err := playback.Start(playback.Command())
-	if err != nil {
-		return errors.Join(err, conn.Close(), os.Remove(socket), listener.Close(), eventsListener.Close())
-	}
+	player := playback.NewPlayer()
 	sched := grid.New(settings.TempoBPM)
 	sounds := make(chan mixer.Sound, soundQueue)
 	changes := make(chan control.Settings, soundQueue)
@@ -227,9 +224,9 @@ func runDaemon() error {
 		}
 	}()
 	slog.Info("daemon started", "socket", socket, "settings", settings.String(), "idle", idle)
-	playErr := daemon.Play(mixer.New(settings.Gain(), synth.Amplitude(limiterCeilingDB)), sched, sounds, changes, stream, idle, time.Now, announce(hub.Publish))
+	playErr := daemon.Play(mixer.New(settings.Gain(), synth.Amplitude(limiterCeilingDB)), sched, sounds, changes, player, idle, time.Now, announce(hub.Publish))
 	slog.Info("daemon stopping")
-	return errors.Join(playErr, conn.Close(), os.Remove(socket), listener.Close(), eventsListener.Close(), stream.Close())
+	return errors.Join(playErr, conn.Close(), os.Remove(socket), listener.Close(), eventsListener.Close(), player.Close())
 }
 
 func enqueue(sounds chan<- mixer.Sound, rng *rand.Rand, root func() int) func(synth.Cue, string) {
